@@ -1,7 +1,33 @@
 # dwm - dynamic window manager
 # See LICENSE file for copyright and license details.
 
-include config.mk
+# dwm version
+VERSION = 6.1
+
+# Customize below to fit your system
+
+# paths
+PREFIX = /usr
+MANPREFIX = ${PREFIX}/share/man
+
+X11INC = /usr/X11R6/include
+X11LIB = /usr/X11R6/lib
+
+XINERAMALIBS  = -lXinerama
+XINERAMAFLAGS = -DXINERAMA
+
+FREETYPELIBS = -lfontconfig -lXft
+FREETYPEINC = /usr/include/freetype2
+
+INCS = -I${X11INC} -I${FREETYPEINC}
+LIBS = -L${X11LIB} -lX11 ${XINERAMALIBS} ${FREETYPELIBS}
+
+CPPFLAGS = -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=2 -DVERSION=\"${VERSION}\" ${XINERAMAFLAGS}
+CFLAGS   = -std=c11 -pedantic -Wall -Wno-deprecated-declarations -O3 -flto ${INCS} ${CPPFLAGS}
+LDFLAGS  = -flto ${LIBS}
+
+# compiler and linker
+CC = clang-7
 
 SRC = drw.c dwm.c util.c
 OBJ = ${SRC:.c=.o}
@@ -37,15 +63,13 @@ dist: clean
 	rm -rf dwm-${VERSION}
 
 install: all
-	mkdir -p ${DESTDIR}${PREFIX}/bin
-	cp -f dwm ${DESTDIR}${PREFIX}/bin
-	chmod 755 ${DESTDIR}${PREFIX}/bin/dwm
-	mkdir -p ${DESTDIR}${MANPREFIX}/man1
-	sed "s/VERSION/${VERSION}/g" < dwm.1 > ${DESTDIR}${MANPREFIX}/man1/dwm.1
-	chmod 644 ${DESTDIR}${MANPREFIX}/man1/dwm.1
+	mkdir -p ${PREFIX}/bin
+	cp -f dwm ${PREFIX}/bin
+	chmod 755 ${PREFIX}/bin/dwm
+	cp -f dwm.desktop ${PREFIX}/share/xsessions
 
 uninstall:
-	rm -f ${DESTDIR}${PREFIX}/bin/dwm\
-		${DESTDIR}${MANPREFIX}/man1/dwm.1
+	rm -f ${PREFIX}/bin/dwm
+	rm -f ${PREFIX}/share/xsessions/dwm.desktop
 
 .PHONY: all options clean dist install uninstall
