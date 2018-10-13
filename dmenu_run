@@ -1,2 +1,21 @@
-#!/bin/sh
-dmenu_path | dmenu "$@" | ${SHELL:-"/bin/sh"} &
+#!/bin/bash
+
+cache_dir="$HOME/.cache/dwm"
+cache="$cache_dir/dmenu_run.cache"
+
+[[ ! -e $cache_dir ]] && mkdir -p "$cache_dir"
+
+IFS=:
+if [[ ! -f $cache ]]; then
+  stest -flx $PATH | sort -u > "$cache"
+fi
+
+function get_completion_list {
+  if stest -dqr -n "$cache" $PATH; then
+    stest -flx $PATH | sort -u | tee "$cache"
+  else
+    cat "$cache"
+  fi
+}
+
+get_completion_list | dmenu "$@" | ${SHELL:-"/bin/sh"} &

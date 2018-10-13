@@ -8,8 +8,45 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "arg.h"
 char *argv0;
+
+/* use main(int argc, char *argv[]) */
+#define ARGBEGIN	for (argv0 = *argv, argv++, argc--;\
+					argv[0] && argv[0][0] == '-'\
+					&& argv[0][1];\
+					argc--, argv++) {\
+				char argc_;\
+				char **argv_;\
+				int brk_;\
+				if (argv[0][1] == '-' && argv[0][2] == '\0') {\
+					argv++;\
+					argc--;\
+					break;\
+				}\
+				for (brk_ = 0, argv[0]++, argv_ = argv;\
+						argv[0][0] && !brk_;\
+						argv[0]++) {\
+					if (argv_ != argv)\
+						break;\
+					argc_ = argv[0][0];\
+					switch (argc_)
+
+#define ARGEND			}\
+			}
+
+#define ARGC()		argc_
+
+#define EARGF(x)	((argv[0][1] == '\0' && argv[1] == NULL)?\
+				((x), abort(), (char *)0) :\
+				(brk_ = 1, (argv[0][1] != '\0')?\
+					(&argv[0][1]) :\
+					(argc--, argv++, argv[0])))
+
+#define ARGF()		((argv[0][1] == '\0' && argv[1] == NULL)?\
+				(char *)0 :\
+				(brk_ = 1, (argv[0][1] != '\0')?\
+					(&argv[0][1]) :\
+					(argc--, argv++, argv[0])))
 
 #define FLAG(x)  (flag[(x)-'a'])
 
@@ -60,7 +97,7 @@ int
 main(int argc, char *argv[])
 {
 	struct dirent *d;
-	char path[PATH_MAX], *line = NULL, *file;
+	char path[PATH_MAX], *line = NULL, *file_path;
 	size_t linesiz = 0;
 	ssize_t n;
 	DIR *dir;
@@ -69,9 +106,15 @@ main(int argc, char *argv[])
 	ARGBEGIN {
 	case 'n': /* newer than file */
 	case 'o': /* older than file */
-		file = EARGF(usage());
-		if (!(FLAG(ARGC()) = !stat(file, (ARGC() == 'n' ? &new : &old))))
-			perror(file);
+		file_path = EARGF(usage());
+    FILE* f = fopen(file_path, "a+");
+    if (!f) {
+			perror(file_path);
+      break;
+    }
+    fclose(f);
+		if (!(FLAG(ARGC()) = !stat(file_path, (ARGC() == 'n' ? &new : &old))))
+			perror(file_path);
 		break;
 	default:
 		/* miscellaneous operators */
