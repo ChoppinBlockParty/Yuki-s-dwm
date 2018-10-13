@@ -98,6 +98,14 @@ static Window root, wmcheckwin;
 struct NumTags { char limitexceeded[LENGTH(tags) > 31 ? -1 : 1]; };
 
 /* function implementations */
+void dwm_log(char const* str) {
+  FILE* f = fopen("/tmp/dwm.log", "a+");
+  if (!f)
+    return;
+  fprintf(f, "%s\n", str);
+  fclose(f);
+}
+
 void
 applyrules(Client *c)
 {
@@ -1996,6 +2004,45 @@ movestack(const Arg *arg) {
 	}
 }
 
+static void startup() {
+  size_t path_spare_len = 1024;
+  char path[1024] = {0};
+  char const* file_path_suffix = ".config/dwm/startup.sh";
+  size_t const file_path_suffix_len = strlen(file_path_suffix);
+  path_spare_len -= file_path_suffix_len + 1;
+  char const* home_env = getenv("HOME");
+  size_t len = 0;
+  if (home_env) {
+    len = strlen(home_env);
+    if (len > path_spare_len)
+      return;
+    strncpy(path, home_env, len);
+    path_spare_len -= len;
+    if (path[len - 1] != '/') {
+      if (path_spare_len < 1)
+        return;
+      path[len] = '/';
+      ++len;
+    }
+  } else {
+    path[len] = '/';
+    ++len;
+  }
+  strncpy(path + len, file_path_suffix, file_path_suffix_len);
+
+  dwm_log(path);
+
+  FILE* f = fopen(path, "r");
+  dwm_log("@@@@@@@@@@@!!!!!!!!!!!");
+  if(!f)
+    return;
+  dwm_log("@@@@@@@@@@@!!!!!!!!!!!");
+  fclose(f);
+  char const* cmd[] = {"/bin/bash", path, NULL};
+  Arg const arg = {.v= cmd};
+  spawn(&arg);
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -2014,6 +2061,7 @@ main(int argc, char *argv[])
 		die("pledge");
 #endif /* __OpenBSD__ */
 	scan();
+  startup();
 	run();
 	cleanup();
 	XCloseDisplay(dpy);
