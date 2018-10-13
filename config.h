@@ -44,7 +44,7 @@ static const int resizehints = 1; /* 1 means respect size hints in tiled resizal
 
 // clang-format off
 static const Layout layouts[] = {
-	/* symbol     arrange function */
+/*  symbol    arrange function */
 	{ "#",      tile },    /* first entry is default */
 	{ "F",      NULL },    /* no layout function means floating behavior */
 	{ "@",      monocle },
@@ -53,11 +53,13 @@ static const Layout layouts[] = {
 
 /* key definitions */
 #define MODKEY Mod4Mask
-#define TAGKEYS(KEY, TAG)                                                                \
-  {MODKEY, KEY, view, {.ui = 1 << TAG}},                                                 \
-    {MODKEY | ControlMask, KEY, toggleview, {.ui = 1 << TAG}},                           \
-    {MODKEY | ShiftMask, KEY, tag, {.ui = 1 << TAG}},                                    \
-    {MODKEY | ControlMask | ShiftMask, KEY, toggletag, {.ui = 1 << TAG}},
+// clang-format off
+#define TAGKEYS(KEY, TAG)                                                \
+  {MODKEY,                           KEY, view,       {.ui = 1 << TAG}}, \
+  {MODKEY | ControlMask,             KEY, toggleview, {.ui = 1 << TAG}}, \
+  {MODKEY | ShiftMask,               KEY, tag,        {.ui = 1 << TAG}}, \
+  {MODKEY | ControlMask | ShiftMask, KEY, toggletag,  {.ui = 1 << TAG}},
+// clang-format on
 
 /* helper for spawning shell commands in the pre dwm-5.0 fashion */
 #define SHCMD(cmd)                                                                       \
