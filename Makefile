@@ -22,17 +22,17 @@ FREETYPEINC = /usr/include/freetype2
 INCS = -I${X11INC} -I${FREETYPEINC}
 LIBS = -L${X11LIB} -lX11 ${XINERAMALIBS} ${FREETYPELIBS}
 
-CPPFLAGS = -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=2 -DVERSION=\"${VERSION}\" ${XINERAMAFLAGS}
+CPPFLAGS = -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L -D_XOPEN_SOURCE=700 -DVERSION=\"${VERSION}\" ${XINERAMAFLAGS}
 CFLAGS   = -std=c11 -pedantic -Wall -Wno-deprecated-declarations -O3 -flto ${INCS} ${CPPFLAGS}
 LDFLAGS  = -flto ${LIBS}
 
 # compiler and linker
 CC = clang-7
 
-SRC = drw.c dwm.c util.c
+SRC = drw.c util.c
 OBJ = ${SRC:.c=.o}
 
-all: options dwm
+all: options dwm dmenu stest
 
 options:
 	@echo dwm build options:
@@ -43,16 +43,20 @@ options:
 .c.o:
 	${CC} -c ${CFLAGS} $<
 
-${OBJ}: config.h
+dwm.o: config.h core.h
+dmenu.o: dmenu_config.h
 
-config.h:
-	cp config.def.h $@
+dwm: dwm.o ${OBJ}
+	${CC} -o $@ $^ ${LDFLAGS}
 
-dwm: ${OBJ}
-	${CC} -o $@ ${OBJ} ${LDFLAGS}
+dmenu: dmenu.o ${OBJ}
+	${CC} -o $@ $^ ${LDFLAGS}
+
+stest: stest.o
+	${CC} -o $@ $^ ${LDFLAGS}
 
 clean:
-	rm -f dwm ${OBJ} dwm-${VERSION}.tar.gz
+	rm -f dwm dwm.o dmenu dmenu.o stest stest.o ${OBJ} dwm-${VERSION}.tar.gz
 
 dist: clean
 	mkdir -p dwm-${VERSION}
@@ -66,10 +70,19 @@ install: all
 	mkdir -p ${PREFIX}/bin
 	cp -f dwm ${PREFIX}/bin
 	chmod 755 ${PREFIX}/bin/dwm
+	cp -f dmenu ${PREFIX}/bin
+	chmod 755 ${PREFIX}/bin/dmenu
+	cp -f dmenu_run ${PREFIX}/bin
+	chmod 755 ${PREFIX}/bin/dmenu_run
+	cp -f stest ${PREFIX}/bin
+	chmod 755 ${PREFIX}/bin/stest
 	cp -f dwm.desktop ${PREFIX}/share/xsessions
 
 uninstall:
 	rm -f ${PREFIX}/bin/dwm
+	rm -f ${PREFIX}/bin/dmenu
+	rm -f ${PREFIX}/bin/dmenu_run
+	rm -f ${PREFIX}/bin/stest
 	rm -f ${PREFIX}/share/xsessions/dwm.desktop
 
 .PHONY: all options clean dist install uninstall
