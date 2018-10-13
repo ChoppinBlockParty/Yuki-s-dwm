@@ -1,6 +1,7 @@
 /* See LICENSE file for copyright and license details. */
 
-#include "core.h"
+#include <X11/Xlib.h>
+#include <X11/Xft/Xft.h>
 
 typedef struct { Cursor cursor; } Cur;
 
