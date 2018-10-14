@@ -7,6 +7,9 @@ enum { CurNormal, CurResize, CurMove, CurLast }; /* cursor */
 enum { SchemeNorm, SchemeSel }; /* color schemes */
 enum {
   NetSupported,
+  NetSystemTray,
+  NetSystemTrayOP,
+  NetSystemTrayOrientation,
   NetWMName,
   NetWMState,
   NetWMCheck,
@@ -17,6 +20,7 @@ enum {
   NetClientList,
   NetLast
 }; /* EWMH atoms */
+enum { Manager, Xembed, XembedInfo, XLast }; /* Xembed atoms */
 enum { WMProtocols, WMDelete, WMState, WMTakeFocus, WMLast }; /* default atoms */
 enum {
   ClkTagBar,
@@ -104,6 +108,11 @@ typedef struct {
   int monitor;
 } Rule;
 
+typedef struct {
+  Window win;
+  Client* icons;
+} Systray;
+
 static void applyrules(Client* c);
 static int applysizehints(Client* c, int* x, int* y, int* w, int* h, int interact);
 static void arrange(Monitor* m);
@@ -150,13 +159,16 @@ static void pop(Client*);
 static void propertynotify(XEvent* e);
 static void quit(const Arg* arg);
 static Monitor* recttomon(int x, int y, int w, int h);
+static void resizerequest(XEvent* e);
+static void resizebarwin(Monitor* m);
 static void resize(Client* c, int x, int y, int w, int h, int interact);
 static void resizeclient(Client* c, int x, int y, int w, int h);
 static void resizemouse(const Arg* arg);
 static void restack(Monitor* m);
 static void run(void);
 static void scan(void);
-static int sendevent(Client* c, Atom proto);
+static int
+sendevent(Window w, Atom proto, int mask, long d0, long d1, long d2, long d3, long d4);
 static void sendmon(Client* c, Monitor* m);
 static void setclientstate(Client* c, long state);
 static void setfocus(Client* c);
@@ -197,3 +209,10 @@ static int xerrorstart(Display* dpy, XErrorEvent* ee);
 static void zoom(const Arg* arg);
 static void movestack(const Arg* arg);
 static void togglescratch(const Arg* arg);
+static unsigned int getsystraywidth();
+static Monitor* systraytomon(Monitor* m);
+static void updatesystrayicongeom(Client* i, int w, int h);
+static void updatesystrayiconstate(Client* i, XPropertyEvent* ev);
+static void updatesystray(void);
+static Client* wintosystrayicon(Window w);
+static void removesystrayicon(Client* i);
