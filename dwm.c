@@ -103,7 +103,7 @@ static void (*handler[LASTEvent])(XEvent*) = {[ButtonPress] = buttonpress,
                                               [PropertyNotify] = propertynotify,
                                               [ResizeRequest] = resizerequest,
                                               [UnmapNotify] = unmapnotify};
-static Atom wmatom[WMLast], netatom[NetLast], xatom[XLast];
+static Atom wmatom[WMLast], netatom[_NetLast], xatom[XLast];
 static int running = 1;
 static Cur* cursor[CurLast];
 static Clr** scheme;
@@ -686,9 +686,6 @@ void drawbar(Monitor* m) {
 
   /* draw status first so it can be overdrawn by tags later */
   if (m == selmon) { /* status is only drawn on selected monitor */
-    /* drw_setscheme(drw, scheme[SchemeNorm]); */
-    /* sw = TEXTW(stext) - lrpad + 2; /\* 2px right padding *\/ */
-    /* drw_text(drw, m->ww - sw, 0, sw, bh, 0, stext, 0); */
     if (showsystray && m == systraytomon(m)) {
       sw = getsystraywidth();
     }
@@ -1280,7 +1277,7 @@ void propertynotify(XEvent* e) {
   }
 
   if ((ev->window == root) && (ev->atom == XA_WM_NAME))
-    updatestatus();
+    drawbar(selmon);
   else if (ev->state == PropertyDelete)
     return; /* ignore */
   else if ((c = wintoclient(ev->window))) {
@@ -1678,7 +1675,7 @@ void setup(void) {
   updatesystray();
   /* init bars */
   updatebars();
-  updatestatus();
+  drawbar(selmon);
   /* supporting window for NetWMCheck */
   wmcheckwin = XCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 0, 0, 0);
   XChangeProperty(dpy,
@@ -1713,7 +1710,7 @@ void setup(void) {
                   32,
                   PropModeReplace,
                   (unsigned char*)netatom,
-                  NetLast);
+                  _NetLast);
   XDeleteProperty(dpy, root, netatom[NetClientList]);
   /* select events */
   wa.cursor = cursor[CurNormal]->cursor;
@@ -2108,12 +2105,6 @@ void updatesizehints(Client* c) {
   } else
     c->maxa = c->mina = 0.0;
   c->isfixed = (c->maxw && c->maxh && c->maxw == c->minw && c->maxh == c->minh);
-}
-
-void updatestatus(void) {
-  if (!gettextprop(root, XA_WM_NAME, stext, sizeof(stext)))
-    strcpy(stext, "dwm-" VERSION);
-  drawbar(selmon);
 }
 
 void updatetitle(Client* c) {

@@ -18,7 +18,7 @@ enum {
   NetWMWindowType,
   NetWMWindowTypeDialog,
   NetClientList,
-  NetLast
+  _NetLast
 }; /* EWMH atoms */
 enum { Manager, Xembed, XembedInfo, XLast }; /* Xembed atoms */
 enum { WMProtocols, WMDelete, WMState, WMTakeFocus, WMLast }; /* default atoms */
@@ -29,7 +29,7 @@ enum {
   ClkWinTitle,
   ClkClientWin,
   ClkRootWin,
-  ClkLast
+  _ClkLast
 }; /* clicks */
 
 typedef union {
@@ -196,7 +196,6 @@ static void updateclientlist(void);
 static int updategeom(void);
 static void updatenumlockmask(void);
 static void updatesizehints(Client* c);
-static void updatestatus(void);
 static void updatetitle(Client* c);
 static void updatewindowtype(Client* c);
 static void updatewmhints(Client* c);
