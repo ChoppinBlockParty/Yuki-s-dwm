@@ -95,9 +95,12 @@ static Window root, wmcheckwin;
 /* configuration, allows nested code to access above variables */
 #include "config.h"
 
+static unsigned int scratchtag = 1 << LENGTH(tags);
+
 /* compile-time check if all tags fit into an unsigned int bit array. */
 struct NumTags {
-  char limitexceeded[LENGTH(tags) > 31 ? -1 : 1];
+  // +1 is for scratchtag
+  char limitexceeded[(LENGTH(tags) + 1) > 31 ? -1 : 1];
 };
 
 /* function implementations */
@@ -107,6 +110,76 @@ void dwm_log(char const* str) {
     return;
   fprintf(f, "%s\n", str);
   fclose(f);
+}
+
+static unsigned char const* get_window_property_data_and_type(
+  Atom atom, Window target_window, long* length, Atom* type, int* size) {
+  Atom actual_type;
+  int actual_format;
+  unsigned long nitems;
+  unsigned long nbytes;
+  unsigned long bytes_after;
+  unsigned char* prop;
+  int status;
+
+  unsigned long max_len = 1024 - 1;
+  status = XGetWindowProperty(dpy,
+                              target_window,
+                              atom,
+                              0,
+                              max_len,
+                              False,
+                              AnyPropertyType,
+                              &actual_type,
+                              &actual_format,
+                              &nitems,
+                              &bytes_after,
+                              &prop);
+  if (status == BadWindow)
+    return NULL;
+  if (status != Success)
+    return NULL;
+
+  if (actual_format == 32)
+    nbytes = sizeof(long);
+  else if (actual_format == 16)
+    nbytes = sizeof(short);
+  else if (actual_format == 8)
+    nbytes = 1;
+  else if (actual_format == 0)
+    nbytes = 0;
+  else
+    return NULL;
+  *length = nitems * nbytes;
+  if (*length > max_len)
+    *length = max_len;
+  *type = actual_type;
+  *size = actual_format;
+  return prop;
+}
+
+unsigned long get_pid(Window target_window) {
+  // https://specifications.freedesktop.org/wm-spec/wm-spec-latest.html#idm140200472565744
+  const char* name = "_NET_WM_PID";
+
+  long length;
+  int size;
+  Atom type;
+
+  Atom atom = XInternAtom(dpy, name, True);
+  if (atom == None) {
+    return 0;
+  }
+
+  unsigned char const* prop
+    = get_window_property_data_and_type(atom, target_window, &length, &type, &size);
+  if (!prop || length != 8)
+    return 0;
+  unsigned long pid = *(unsigned long*)prop;
+  /* char str[1024]; */
+  /* sprintf(str, "OMFFFFFFFFFG         %lu ", pid); */
+  /* dwm_log(str); */
+  return pid;
 }
 
 void applyrules(Client* c) {
@@ -467,6 +540,10 @@ void detach(Client* c) {
   for (tc = &c->mon->clients; *tc && *tc != c; tc = &(*tc)->next)
     ;
   *tc = c->next;
+
+  if (c == c->mon->scratchpad) {
+    c->mon->scratchpad = NULL;
+  }
 }
 
 void detachstack(Client* c) {
@@ -823,10 +900,22 @@ void killclient(const Arg* arg) {
   }
 }
 
+Monitor* get_scratchpad_monitor(Window w) {
+  unsigned long pid = get_pid(w);
+  if (pid) {
+    Monitor* m = mons;
+    for (; m && m->scratchpadpid != pid; m = m->next)
+      ;
+    return m;
+  }
+  return NULL;
+}
+
 void manage(Window w, XWindowAttributes* wa) {
   Client *c, *t = NULL;
   Window trans = None;
   XWindowChanges wc;
+  Monitor* scratchpadmon = get_scratchpad_monitor(w);
 
   c = ecalloc(1, sizeof(Client));
   c->win = w;
@@ -841,23 +930,39 @@ void manage(Window w, XWindowAttributes* wa) {
   if (XGetTransientForHint(dpy, w, &trans) && (t = wintoclient(trans))) {
     c->mon = t->mon;
     c->tags = t->tags;
+  } else if (scratchpadmon) {
+    c->mon = scratchpadmon;
+    scratchpadmon->scratchpad = c;
+    scratchpadmon->scratchpadpid = 0;
   } else {
     c->mon = selmon;
     applyrules(c);
   }
 
-  if (c->x + WIDTH(c) > c->mon->mx + c->mon->mw)
-    c->x = c->mon->mx + c->mon->mw - WIDTH(c);
-  if (c->y + HEIGHT(c) > c->mon->my + c->mon->mh)
-    c->y = c->mon->my + c->mon->mh - HEIGHT(c);
-  c->x = MAX(c->x, c->mon->mx);
-  /* only fix client y-offset, if the client center might cover the bar */
-  c->y = MAX(c->y,
-             ((c->mon->by == c->mon->my) && (c->x + (c->w / 2) >= c->mon->wx)
-              && (c->x + (c->w / 2) < c->mon->wx + c->mon->ww))
-               ? bh
-               : c->mon->my);
-  c->bw = borderpx;
+  if (scratchpadmon) {
+    c->mon->tagset[c->mon->seltags] |= c->tags = scratchtag;
+    c->isfloating = True;
+    int width = c->mon->ww / 2 + 1;
+    int height = c->mon->wh / 2 + 1;
+    c->x = c->mon->wx + (c->mon->ww / 2 - width / 2 - borderpx);
+    c->y = c->mon->wy + (c->mon->wh / 2 - height / 2 - borderpx);
+    c->w = width;
+    c->h = height;
+    c->bw = borderpx;
+  } else {
+    if (c->x + WIDTH(c) > c->mon->mx + c->mon->mw)
+      c->x = c->mon->mx + c->mon->mw - WIDTH(c);
+    if (c->y + HEIGHT(c) > c->mon->my + c->mon->mh)
+      c->y = c->mon->my + c->mon->mh - HEIGHT(c);
+    c->x = MAX(c->x, c->mon->mx);
+    /* only fix client y-offset, if the client center might cover the bar */
+    c->y = MAX(c->y,
+               ((c->mon->by == c->mon->my) && (c->x + (c->w / 2) >= c->mon->wx)
+                && (c->x + (c->w / 2) < c->mon->wx + c->mon->ww))
+                 ? bh
+                 : c->mon->my);
+    c->bw = borderpx;
+  }
 
   wc.border_width = c->bw;
   XConfigureWindow(dpy, w, CWBorderWidth, &wc);
@@ -1997,6 +2102,37 @@ static void startup() {
   char const* cmd[] = {"/bin/bash", path, NULL};
   Arg const arg = {.v = cmd};
   spawn(&arg);
+}
+
+void togglescratch(const Arg* arg) {
+  if (selmon->scratchpadpid)
+    return;
+
+  if (selmon->scratchpad) {
+    unsigned int newtagset = selmon->tagset[selmon->seltags] ^ scratchtag;
+    if (newtagset) {
+      selmon->tagset[selmon->seltags] = newtagset;
+      focus(NULL);
+      arrange(selmon);
+    }
+    if (ISVISIBLE(selmon->scratchpad)) {
+      focus(selmon->scratchpad);
+      restack(selmon);
+    }
+  } else {
+    __pid_t pid = fork();
+    if (pid == 0) {
+      if (dpy)
+        close(ConnectionNumber(dpy));
+      setsid();
+      execvp(((char**)arg->v)[0], (char**)arg->v);
+      fprintf(stderr, "dwm: execvp %s", ((char**)arg->v)[0]);
+      perror(" failed");
+      exit(EXIT_SUCCESS);
+    } else {
+      selmon->scratchpadpid = pid;
+    }
+  }
 }
 
 int main(int argc, char* argv[]) {

@@ -91,6 +91,7 @@ static const char* termcmd[] = {"urxvt", NULL};
 // clang-format off
 static Key keys[] = {
 	/* modifier         key           function        argument */
+	{ 0,                XK_F1,           togglescratch,  {.v = termcmd } },
 	{ MODKEY,           XK_space,        spawn,          {.v = dmenucmd } },
 	{ MODKEY,           XK_bracketleft,  spawn,          {.v = emacscmd } },
 	{ MODKEY,           XK_bracketright, spawn,          {.v = firefoxcmd } },
@@ -108,7 +109,7 @@ static Key keys[] = {
 	{ MODKEY,           XK_t,            setlayout,      {.v = &layouts[0]} },
 	{ MODKEY,           XK_b,            setlayout,      {.v = &layouts[1]} },
 	{ MODKEY,           XK_f,            setlayout,      {.v = &layouts[2]} },
-	{ MODKEY|ShiftMask, XK_c,            togglefloating, {0} },
+	{ MODKEY,           XK_c,            togglefloating, {0} },
 	{ MODKEY,           XK_0,            view,           {.ui = ~0 } },
 	{ MODKEY|ShiftMask, XK_0,            tag,            {.ui = ~0 } },
 	{ MODKEY,           XK_k,            focusmon,       {.i = -1 } },
@@ -126,7 +127,8 @@ static Key keys[] = {
 	TAGKEYS(            XK_a,                            6)
 	TAGKEYS(            XK_s,                            7)
 	TAGKEYS(            XK_d,                            8)
-	{ MODKEY|ShiftMask, XK_q,            quit,           {0} },
+
+	{ MODKEY|ControlMask|ShiftMask, XK_r, quit, {0} },
 };
 
 /* button definitions */

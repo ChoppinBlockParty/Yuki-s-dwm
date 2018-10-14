@@ -88,6 +88,8 @@ struct Monitor {
   Client* clients;
   Client* sel;
   Client* stack;
+  Client* scratchpad;
+  unsigned long scratchpadpid;
   Monitor* next;
   Window barwin;
   const Layout* lt[2];
@@ -194,3 +196,4 @@ static int xerrordummy(Display* dpy, XErrorEvent* ee);
 static int xerrorstart(Display* dpy, XErrorEvent* ee);
 static void zoom(const Arg* arg);
 static void movestack(const Arg* arg);
+static void togglescratch(const Arg* arg);
