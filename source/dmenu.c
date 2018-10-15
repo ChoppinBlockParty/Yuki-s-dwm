@@ -18,6 +18,7 @@
 #endif
 #include <X11/Xft/Xft.h>
 
+#include "dmenu_enum.h"
 #include "drw.h"
 #include "util.h"
 
@@ -27,9 +28,6 @@
    * MAX(0, MIN((y) + (h), (r).y_org + (r).height) - MAX((y), (r).y_org)))
 #define LENGTH(X) (sizeof X / sizeof X[0])
 #define TEXTW(X) (drw_fontset_getwidth(drw, (X)) + lrpad)
-
-/* enums */
-enum { SchemeNorm, SchemeSel, SchemeOut, SchemeLast }; /* color schemes */
 
 struct item {
   char* text;
@@ -54,7 +52,7 @@ static Window root, parentwin, win;
 static XIC xic;
 
 static Drw* drw;
-static Clr* scheme[SchemeLast];
+static XftColor* scheme[SchemeLast];
 
 #include "../dmenu_config.h"
 
@@ -110,11 +108,11 @@ static char* cistrstr(const char* s, const char* sub) {
 
 static int drawitem(struct item* item, int x, int y, int w) {
   if (item == sel)
-    drw_setscheme(drw, scheme[SchemeSel]);
+    drw_setscheme(drw, scheme[DwmThisScheme]);
   else if (item->out)
     drw_setscheme(drw, scheme[SchemeOut]);
   else
-    drw_setscheme(drw, scheme[SchemeNorm]);
+    drw_setscheme(drw, scheme[DwmNormalScheme]);
 
   return drw_text(drw, x, y, w, bh, lrpad / 2, item->text, 0);
 }
@@ -124,21 +122,21 @@ static void drawmenu(void) {
   struct item* item;
   int x = 0, y = 0, w;
 
-  drw_setscheme(drw, scheme[SchemeNorm]);
+  drw_setscheme(drw, scheme[DwmNormalScheme]);
   drw_rect(drw, 0, 0, mw, mh, 1, 1);
 
   if (prompt && *prompt) {
-    drw_setscheme(drw, scheme[SchemeSel]);
+    drw_setscheme(drw, scheme[DwmThisScheme]);
     x = drw_text(drw, x, 0, promptw, bh, lrpad / 2, prompt, 0);
   }
   /* draw input field */
   w = (lines > 0 || !matches) ? mw - x : inputw;
-  drw_setscheme(drw, scheme[SchemeNorm]);
+  drw_setscheme(drw, scheme[DwmNormalScheme]);
   drw_text(drw, x, 0, w, bh, lrpad / 2, text, 0);
 
   curpos = TEXTW(text) - TEXTW(&text[cursor]);
   if ((curpos += lrpad / 2 - 1) < w) {
-    drw_setscheme(drw, scheme[SchemeNorm]);
+    drw_setscheme(drw, scheme[DwmNormalScheme]);
     drw_rect(drw, x + curpos, 2, 2, bh - 4, 1, 0);
   }
 
@@ -151,7 +149,7 @@ static void drawmenu(void) {
     x += inputw;
     w = TEXTW("<");
     if (curr->left) {
-      drw_setscheme(drw, scheme[SchemeNorm]);
+      drw_setscheme(drw, scheme[DwmNormalScheme]);
       drw_text(drw, x, 0, w, bh, lrpad / 2, "<", 0);
     }
     x += w;
@@ -159,7 +157,7 @@ static void drawmenu(void) {
       x = drawitem(item, x, 0, MIN(TEXTW(item->text), mw - x - TEXTW(">")));
     if (next) {
       w = TEXTW(">");
-      drw_setscheme(drw, scheme[SchemeNorm]);
+      drw_setscheme(drw, scheme[DwmNormalScheme]);
       drw_text(drw, mw - w, 0, w, bh, lrpad / 2, ">", 0);
     }
   }
@@ -669,7 +667,7 @@ static void setup(void) {
 
   /* create menu window */
   swa.override_redirect = True;
-  swa.background_pixel = scheme[SchemeNorm][ColBg].pixel;
+  swa.background_pixel = scheme[DwmNormalScheme][DwmBgColor].pixel;
   swa.event_mask = ExposureMask | KeyPressMask | VisibilityChangeMask;
   win = XCreateWindow(dpy,
                       parentwin,
@@ -747,13 +745,13 @@ int main(int argc, char* argv[]) {
 		else if (!strcmp(argv[i], "-fn"))  /* font or font set */
 			fonts[0] = argv[++i];
 		else if (!strcmp(argv[i], "-nb"))  /* normal background color */
-			colors[SchemeNorm][ColBg] = argv[++i];
+			colors[DwmNormalScheme][DwmBgColor] = argv[++i];
 		else if (!strcmp(argv[i], "-nf"))  /* normal foreground color */
-			colors[SchemeNorm][ColFg] = argv[++i];
+			colors[DwmNormalScheme][DwmFgColor] = argv[++i];
 		else if (!strcmp(argv[i], "-sb"))  /* selected background color */
-			colors[SchemeSel][ColBg] = argv[++i];
+			colors[DwmThisScheme][DwmBgColor] = argv[++i];
 		else if (!strcmp(argv[i], "-sf"))  /* selected foreground color */
-			colors[SchemeSel][ColFg] = argv[++i];
+			colors[DwmThisScheme][DwmFgColor] = argv[++i];
 		else if (!strcmp(argv[i], "-w"))   /* embedding window id */
 			embed = argv[++i];
 		else

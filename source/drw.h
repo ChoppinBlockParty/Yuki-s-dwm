@@ -1,7 +1,7 @@
 /* See LICENSE file for copyright and license details. */
 
-#include <X11/Xlib.h>
 #include <X11/Xft/Xft.h>
+#include <X11/Xlib.h>
 
 typedef struct { Cursor cursor; } Cur;
 
@@ -13,9 +13,6 @@ typedef struct Fnt {
   struct Fnt* next;
 } Fnt;
 
-enum { ColFg, ColBg, ColBorder }; /* Clr scheme index */
-typedef XftColor Clr;
-
 typedef struct {
   unsigned int w, h;
   Display* dpy;
@@ -23,7 +20,7 @@ typedef struct {
   Window root;
   Drawable drawable;
   GC gc;
-  Clr* scheme;
+  XftColor* scheme;
   Fnt* fonts;
 } Drw;
 
@@ -40,8 +37,8 @@ void drw_font_getexts(
   Fnt* font, const char* text, unsigned int len, unsigned int* w, unsigned int* h);
 
 /* Colorscheme abstraction */
-void drw_clr_create(Drw* drw, Clr* dest, const char* clrname);
-Clr* drw_scm_create(Drw* drw, const char* clrnames[], size_t clrcount);
+void drw_clr_create(Drw* drw, XftColor* dest, const char* clrname);
+XftColor* drw_scm_create(Drw* drw, const char* clrnames[], size_t clrcount);
 
 /* Cursor abstraction */
 Cur* drw_cur_create(Drw* drw, int shape);
@@ -49,7 +46,7 @@ void drw_cur_free(Drw* drw, Cur* cursor);
 
 /* Drawing context manipulation */
 void drw_setfontset(Drw* drw, Fnt* set);
-void drw_setscheme(Drw* drw, Clr* scm);
+void drw_setscheme(Drw* drw, XftColor* scm);
 
 /* Drawing functions */
 void drw_rect(

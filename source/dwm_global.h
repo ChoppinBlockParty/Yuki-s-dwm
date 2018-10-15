@@ -1,9 +1,11 @@
 #pragma once
 
+#include <X11/Xft/Xft.h>
 #include <X11/Xlib.h>
 
 typedef struct dwm_screen_s dwm_screen_t;
-typedef struct dwm_client_s dwm_client_t;
+
+typedef struct dwm_client_s dwm_window_t;
 
 typedef struct dwm_client_s {
   char name[256];
@@ -14,11 +16,11 @@ typedef struct dwm_client_s {
   int bw, oldbw;
   unsigned int tags;
   int isfixed, isfloating, isurgent, neverfocus, oldstate, isfullscreen;
-  dwm_client_t* next;
-  dwm_client_t* snext;
+  dwm_window_t* next;
+  dwm_window_t* snext;
   dwm_screen_t* mon;
   Window win;
-} dwm_client_t;
+} dwm_window_t;
 
 typedef struct {
   const char* symbol;
@@ -38,17 +40,43 @@ typedef struct dwm_screen_s {
   unsigned int tagset[2];
   int showbar;
   int topbar;
-  dwm_client_t* clients;
-  dwm_client_t* sel;
-  dwm_client_t* stack;
-  dwm_client_t* scratchpad;
+  dwm_window_t* clients;
+  dwm_window_t* sel;
+  dwm_window_t* stack;
+  dwm_window_t* scratchpad;
   unsigned long scratchpadpid;
   dwm_screen_t* next;
   Window barwin;
   const dwm_layout_t* lt[2];
 } dwm_screen_t;
 
+// EWMH atoms
+enum {
+  NetSupported,
+  NetSystemTray,
+  NetSystemTrayOP,
+  NetSystemTrayOrientation,
+  NetWMName,
+  NetWMState,
+  NetWMCheck,
+  NetWMFullscreen,
+  NetActiveWindow,
+  NetWMWindowType,
+  NetWMWindowTypeDialog,
+  NetClientList,
+  _NetLast
+};
+// Xembed atoms
+enum { Manager, Xembed, XembedInfo, _XLast };
+// default atoms
+enum { WMProtocols, WMDelete, WMState, WMTakeFocus, _WMLast };
+
 extern Display* dwm_x_display;
 extern Window dwm_x_window;
 extern dwm_screen_t* dwm_screens;
 extern dwm_screen_t* dwm_this_screen;
+extern int dwm_bar_height;
+extern XftColor** dwm_color_schemes;
+extern Atom dwm_x_wm_atoms[_WMLast];
+extern Atom dwm_x_net_atoms[_NetLast];
+extern Atom dwm_x_atoms[_XLast];

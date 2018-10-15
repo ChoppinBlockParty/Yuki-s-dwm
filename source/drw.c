@@ -9,6 +9,8 @@
 #define UTF_INVALID 0xFFFD
 #define UTF_SIZ 4
 
+enum { DwmFgColor, DwmBgColor };
+
 static const unsigned char utfbyte[UTF_SIZ + 1] = {0x80, 0, 0xC0, 0xE0, 0xF0};
 static const unsigned char utfmask[UTF_SIZ + 1] = {0xC0, 0x80, 0xE0, 0xF0, 0xF8};
 static const long utfmin[UTF_SIZ + 1] = {0, 0, 0x80, 0x800, 0x10000};
@@ -158,7 +160,7 @@ void drw_fontset_free(Fnt* font) {
   }
 }
 
-void drw_clr_create(Drw* drw, Clr* dest, const char* clrname) {
+void drw_clr_create(Drw* drw, XftColor* dest, const char* clrname) {
   if (!drw || !dest || !clrname)
     return;
 
@@ -172,12 +174,12 @@ void drw_clr_create(Drw* drw, Clr* dest, const char* clrname) {
 
 /* Wrapper to create color schemes. The caller has to call free(3) on the
  * returned color scheme when done using it. */
-Clr* drw_scm_create(Drw* drw, const char* clrnames[], size_t clrcount) {
+XftColor* drw_scm_create(Drw* drw, const char* clrnames[], size_t clrcount) {
   size_t i;
-  Clr* ret;
+  XftColor* ret;
 
   /* need at least two colors for a scheme */
-  if (!drw || !clrnames || clrcount < 2 || !(ret = ecalloc(clrcount, sizeof(Clr))))
+  if (!drw || !clrnames || clrcount < 2 || !(ret = ecalloc(clrcount, sizeof(XftColor))))
     return NULL;
 
   for (i = 0; i < clrcount; i++)
@@ -190,7 +192,7 @@ void drw_setfontset(Drw* drw, Fnt* set) {
     drw->fonts = set;
 }
 
-void drw_setscheme(Drw* drw, Clr* scm) {
+void drw_setscheme(Drw* drw, XftColor* scm) {
   if (drw)
     drw->scheme = scm;
 }
@@ -199,8 +201,9 @@ void drw_rect(
   Drw* drw, int x, int y, unsigned int w, unsigned int h, int filled, int invert) {
   if (!drw || !drw->scheme)
     return;
-  XSetForeground(
-    drw->dpy, drw->gc, invert ? drw->scheme[ColBg].pixel : drw->scheme[ColFg].pixel);
+  XSetForeground(drw->dpy,
+                 drw->gc,
+                 invert ? drw->scheme[DwmBgColor].pixel : drw->scheme[DwmFgColor].pixel);
   if (filled)
     XFillRectangle(drw->dpy, drw->drawable, drw->gc, x, y, w, h);
   else
@@ -236,7 +239,8 @@ int drw_text(Drw* drw,
   if (!render) {
     w = ~w;
   } else {
-    XSetForeground(drw->dpy, drw->gc, drw->scheme[invert ? ColFg : ColBg].pixel);
+    XSetForeground(
+      drw->dpy, drw->gc, drw->scheme[invert ? DwmFgColor : DwmBgColor].pixel);
     XFillRectangle(drw->dpy, drw->drawable, drw->gc, x, y, w, h);
     d = XftDrawCreate(drw->dpy,
                       drw->drawable,
@@ -288,7 +292,7 @@ int drw_text(Drw* drw,
         if (render) {
           ty = y + (h - usedfont->h) / 2 + usedfont->xfont->ascent;
           XftDrawStringUtf8(d,
-                            &drw->scheme[invert ? ColBg : ColFg],
+                            &drw->scheme[invert ? DwmBgColor : DwmFgColor],
                             usedfont->xfont,
                             x,
                             ty,
