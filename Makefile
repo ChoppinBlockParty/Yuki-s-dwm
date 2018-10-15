@@ -61,7 +61,7 @@ stest: source/stest.o
 	${CC} -o $@ $^ ${LDFLAGS}
 
 clean:
-	rm -f dwm dwm.o dmenu dmenu.o stest stest.o ${OBJ} dwm-${VERSION}.tar.gz
+	rm -f dwm source/dwm.o dmenu source/dmenu.o stest source/stest.o ${OBJ} ${DWM_OBJ} dwm-${VERSION}.tar.gz
 
 dist: clean
 	mkdir -p dwm-${VERSION}
