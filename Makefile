@@ -29,8 +29,11 @@ LDFLAGS  = -flto ${LIBS}
 # compiler and linker
 CC = clang-7
 
-SRC = drw.c util.c
+SRC = source/drw.c source/util.c
 OBJ = ${SRC:.c=.o}
+
+DWM_SRC = source/dwm_global.c
+DWM_OBJ = ${DWM_SRC:.c=.o}
 
 all: options dwm dmenu stest
 
@@ -40,19 +43,21 @@ options:
 	@echo "LDFLAGS  = ${LDFLAGS}"
 	@echo "CC       = ${CC}"
 
-.c.o:
-	${CC} -c ${CFLAGS} $<
+%.o: %.c
+	${CC} -c ${CFLAGS} -o $@ $<
 
-dwm.o: config.h core.h
+drw.o: source/drw.h
+util.o: source/util.h
+dwm.o: config.h source/core.h source/dwm_global.h
 dmenu.o: dmenu_config.h
 
-dwm: dwm.o ${OBJ}
+dwm: source/dwm.o ${OBJ} ${DWM_OBJ}
 	${CC} -o $@ $^ ${LDFLAGS}
 
-dmenu: dmenu.o ${OBJ}
+dmenu: source/dmenu.o ${OBJ}
 	${CC} -o $@ $^ ${LDFLAGS}
 
-stest: stest.o
+stest: source/stest.o
 	${CC} -o $@ $^ ${LDFLAGS}
 
 clean:

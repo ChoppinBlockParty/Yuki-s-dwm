@@ -2,7 +2,7 @@
 
 #include <stddef.h>
 
-#include "core.h"
+#include "source/core.h"
 
 /* appearance */
 static const unsigned int borderpx = 1; /* border pixel of windows */
@@ -49,7 +49,7 @@ static const int nmaster = 1; /* number of clients in master area */
 static const int resizehints = 1; /* 1 means respect size hints in tiled resizals */
 
 // clang-format off
-static const Layout layouts[] = {
+static const dwm_layout_t layouts[] = {
 /*  symbol    arrange function */
 	{ "#",      tile },    /* first entry is default */
 	{ "F",      NULL },    /* no layout function means floating behavior */
