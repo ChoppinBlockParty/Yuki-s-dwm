@@ -6,9 +6,9 @@
 #define WIDTH(X) ((X)->w + 2 * (X)->bw)
 #define HEIGHT(X) ((X)->h + 2 * (X)->bw)
 
-typedef struct dwm_screen_s dwm_screen_t;
+typedef struct dwm_monitor_s dwm_monitor_t;
 
-typedef struct dwm_client_s dwm_window_t;
+typedef struct dwm_client_s dwm_client_t;
 
 typedef struct dwm_client_s {
   char name[256];
@@ -19,18 +19,18 @@ typedef struct dwm_client_s {
   int bw, oldbw;
   unsigned int tags;
   int isfixed, isfloating, isurgent, neverfocus, oldstate, isfullscreen;
-  dwm_window_t* next;
-  dwm_window_t* snext;
-  dwm_screen_t* mon;
+  dwm_client_t* next;
+  dwm_client_t* snext;
+  dwm_monitor_t* mon;
   Window win;
-} dwm_window_t;
+} dwm_client_t;
 
 typedef struct {
   const char* symbol;
-  void (*arrange)(dwm_screen_t*);
+  void (*arrange)(dwm_monitor_t*);
 } dwm_layout_t;
 
-typedef struct dwm_screen_s {
+typedef struct dwm_monitor_s {
   char ltsymbol[16];
   float mfact;
   int nmaster;
@@ -43,15 +43,15 @@ typedef struct dwm_screen_s {
   unsigned int tagset[2];
   int showbar;
   int topbar;
-  dwm_window_t* clients;
-  dwm_window_t* sel;
-  dwm_window_t* stack;
-  dwm_window_t* scratchpad;
+  dwm_client_t* clients;
+  dwm_client_t* sel;
+  dwm_client_t* stack;
+  dwm_client_t* scratchpad;
   unsigned long scratchpadpid;
-  dwm_screen_t* next;
+  dwm_monitor_t* next;
   Window barwin;
   const dwm_layout_t* lt[2];
-} dwm_screen_t;
+} dwm_monitor_t;
 
 // EWMH atoms
 enum {
@@ -113,11 +113,11 @@ extern int dwm_x_screen_width;
 extern int dwm_x_screen_height;
 extern Window dwm_x_window;
 
-typedef struct dwm_drw_s Drw;
-extern Drw* drw;
+typedef struct dwm_drw_s dwm_drw_t;
+extern dwm_drw_t* dwm_drw;
 
-extern dwm_screen_t* dwm_screens;
-extern dwm_screen_t* dwm_this_screen;
+extern dwm_monitor_t* dwm_screens;
+extern dwm_monitor_t* dwm_this_screen;
 extern int dwm_bar_height;
 extern XftColor** dwm_color_schemes;
 extern Atom dwm_x_wm_atoms[_WMLast];

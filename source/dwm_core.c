@@ -6,9 +6,9 @@
 
 #include <X11/Xatom.h>
 
-int dwm_apply_size_hints(dwm_window_t* c, int* x, int* y, int* w, int* h, int interact) {
+int dwm_apply_size_hints(dwm_client_t* c, int* x, int* y, int* w, int* h, int interact) {
   int baseismin;
-  dwm_screen_t* m = c->mon;
+  dwm_monitor_t* m = c->mon;
 
   /* set minimum possible */
   *w = MAX(1, *w);
@@ -70,7 +70,7 @@ int dwm_apply_size_hints(dwm_window_t* c, int* x, int* y, int* w, int* h, int in
   return *x != c->x || *y != c->y || *w != c->w || *h != c->h;
 }
 
-void dwm_update_size_hints(dwm_window_t* c) {
+void dwm_update_size_hints(dwm_client_t* c) {
   long msize;
   XSizeHints size;
 
@@ -111,8 +111,7 @@ void dwm_update_size_hints(dwm_window_t* c) {
   c->isfixed = (c->maxw && c->maxh && c->maxw == c->minw && c->maxh == c->minh);
 }
 
-
-Atom dwm_get_x_atom_property(dwm_window_t* c, Atom prop) {
+Atom dwm_get_x_atom_property(dwm_client_t* c, Atom prop) {
   int di;
   unsigned long dl;
   unsigned char* p = NULL;
@@ -168,7 +167,7 @@ int dwm_send_x_event(
   return exists;
 }
 
-void dwm_set_x_window_state(dwm_window_t* c, long state) {
+void dwm_set_x_window_state(dwm_client_t* c, long state) {
   long data[] = {state, None};
 
   XChangeProperty(dwm_x_display,

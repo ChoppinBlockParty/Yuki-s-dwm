@@ -27,7 +27,7 @@
   (MAX(0, MIN((x) + (w), (r).x_org + (r).width) - MAX((x), (r).x_org))                   \
    * MAX(0, MIN((y) + (h), (r).y_org + (r).height) - MAX((y), (r).y_org)))
 #define LENGTH(X) (sizeof X / sizeof X[0])
-#define TEXTW(X) (drw_fontset_getwidth(drw, (X)) + lrpad)
+#define TEXTW(X) (dwm_drw_fontset_getwidth(dwm_drw, (X)) + lrpad)
 
 struct item {
   char* text;
@@ -51,8 +51,8 @@ static Display* dpy;
 static Window root, parentwin, win;
 static XIC xic;
 
-static Drw _dmenu_drw;
-static Drw* drw = &_dmenu_drw;
+static dwm_drw_t _dmenu_drw;
+static dwm_drw_t* dwm_drw = &_dmenu_drw;
 static XftColor* scheme[SchemeLast];
 
 #include "../dmenu_config.h"
@@ -93,7 +93,7 @@ static void cleanup(void) {
   XUngrabKey(dpy, AnyKey, AnyModifier, root);
   for (i = 0; i < SchemeLast; i++)
     free(scheme[i]);
-  dwm_release_drw(drw);
+  dwm_release_dwm_drw(dwm_drw);
   XSync(dpy, False);
   XCloseDisplay(dpy);
 }
@@ -109,13 +109,13 @@ static char* cistrstr(const char* s, const char* sub) {
 
 static int drawitem(struct item* item, int x, int y, int w) {
   if (item == sel)
-    drw_setscheme(drw, scheme[DwmThisScheme]);
+    dwm_drw_setscheme(dwm_drw, scheme[DwmThisScheme]);
   else if (item->out)
-    drw_setscheme(drw, scheme[SchemeOut]);
+    dwm_drw_setscheme(dwm_drw, scheme[SchemeOut]);
   else
-    drw_setscheme(drw, scheme[DwmNormalScheme]);
+    dwm_drw_setscheme(dwm_drw, scheme[DwmNormalScheme]);
 
-  return drw_text(drw, x, y, w, bh, lrpad / 2, item->text, 0);
+  return dwm_drw_text(dwm_drw, x, y, w, bh, lrpad / 2, item->text, 0);
 }
 
 static void drawmenu(void) {
@@ -123,22 +123,22 @@ static void drawmenu(void) {
   struct item* item;
   int x = 0, y = 0, w;
 
-  drw_setscheme(drw, scheme[DwmNormalScheme]);
-  drw_rect(drw, 0, 0, mw, mh, 1, 1);
+  dwm_drw_setscheme(dwm_drw, scheme[DwmNormalScheme]);
+  dwm_drw_rect(dwm_drw, 0, 0, mw, mh, 1, 1);
 
   if (prompt && *prompt) {
-    drw_setscheme(drw, scheme[DwmThisScheme]);
-    x = drw_text(drw, x, 0, promptw, bh, lrpad / 2, prompt, 0);
+    dwm_drw_setscheme(dwm_drw, scheme[DwmThisScheme]);
+    x = dwm_drw_text(dwm_drw, x, 0, promptw, bh, lrpad / 2, prompt, 0);
   }
   /* draw input field */
   w = (lines > 0 || !matches) ? mw - x : inputw;
-  drw_setscheme(drw, scheme[DwmNormalScheme]);
-  drw_text(drw, x, 0, w, bh, lrpad / 2, text, 0);
+  dwm_drw_setscheme(dwm_drw, scheme[DwmNormalScheme]);
+  dwm_drw_text(dwm_drw, x, 0, w, bh, lrpad / 2, text, 0);
 
   curpos = TEXTW(text) - TEXTW(&text[cursor]);
   if ((curpos += lrpad / 2 - 1) < w) {
-    drw_setscheme(drw, scheme[DwmNormalScheme]);
-    drw_rect(drw, x + curpos, 2, 2, bh - 4, 1, 0);
+    dwm_drw_setscheme(dwm_drw, scheme[DwmNormalScheme]);
+    dwm_drw_rect(dwm_drw, x + curpos, 2, 2, bh - 4, 1, 0);
   }
 
   if (lines > 0) {
@@ -150,19 +150,19 @@ static void drawmenu(void) {
     x += inputw;
     w = TEXTW("<");
     if (curr->left) {
-      drw_setscheme(drw, scheme[DwmNormalScheme]);
-      drw_text(drw, x, 0, w, bh, lrpad / 2, "<", 0);
+      dwm_drw_setscheme(dwm_drw, scheme[DwmNormalScheme]);
+      dwm_drw_text(dwm_drw, x, 0, w, bh, lrpad / 2, "<", 0);
     }
     x += w;
     for (item = curr; item != next; item = item->right)
       x = drawitem(item, x, 0, MIN(TEXTW(item->text), mw - x - TEXTW(">")));
     if (next) {
       w = TEXTW(">");
-      drw_setscheme(drw, scheme[DwmNormalScheme]);
-      drw_text(drw, mw - w, 0, w, bh, lrpad / 2, ">", 0);
+      dwm_drw_setscheme(dwm_drw, scheme[DwmNormalScheme]);
+      dwm_drw_text(dwm_drw, mw - w, 0, w, bh, lrpad / 2, ">", 0);
     }
   }
-  drw_map(drw, win, 0, 0, mw, mh);
+  dwm_drw_map(dwm_drw, win, 0, 0, mw, mh);
 }
 
 static void grabfocus(void) {
@@ -556,7 +556,7 @@ static void readstdin(void) {
     if (!(items[i].text = strdup(buf)))
       die("cannot strdup %u bytes:", strlen(buf) + 1);
     items[i].out = 0;
-    drw_font_getexts(drw->fonts, buf, strlen(buf), &tmpmax, NULL);
+    dwm_drw_font_getexts(dwm_drw->fonts, buf, strlen(buf), &tmpmax, NULL);
     if (tmpmax > inputw) {
       inputw = tmpmax;
       imax = i;
@@ -577,7 +577,7 @@ static void run(void) {
     switch (ev.type) {
     case Expose:
       if (ev.xexpose.count == 0)
-        drw_map(drw, win, 0, 0, mw, mh);
+        dwm_drw_map(dwm_drw, win, 0, 0, mw, mh);
       break;
     case FocusIn:
       /* regrab focus from parent window */
@@ -614,13 +614,13 @@ static void setup(void) {
 #endif
   /* init appearance */
   for (j = 0; j < SchemeLast; j++)
-    scheme[j] = drw_scm_create(drw, colors[j], 2);
+    scheme[j] = dwm_drw_scm_create(dwm_drw, colors[j], 2);
 
   clip = XInternAtom(dpy, "CLIPBOARD", False);
   utf8 = XInternAtom(dpy, "UTF8_STRING", False);
 
   /* calculate menu geometry */
-  bh = drw->fonts->h + 2;
+  bh = dwm_drw->fonts->h + 2;
   lines = MAX(lines, 0);
   mh = (lines + 1) * bh;
 #ifdef XINERAMA
@@ -706,7 +706,7 @@ static void setup(void) {
     }
     grabfocus();
   }
-  drw_resize(drw, mw, mh);
+  dwm_drw_resize(dwm_drw, mw, mh);
   drawmenu();
 }
 
@@ -771,10 +771,10 @@ int main(int argc, char* argv[]) {
     parentwin = root;
   if (!XGetWindowAttributes(dpy, parentwin, &wa))
     die("could not get embedding window attributes: 0x%lx", parentwin);
-  dwm_init_drw(drw, dpy, screen, root, wa.width, wa.height);
-  if (!drw_fontset_create(drw, fonts, LENGTH(fonts)))
+  dwm_init_dwm_drw(dwm_drw, dpy, screen, root, wa.width, wa.height);
+  if (!dwm_drw_fontset_create(dwm_drw, fonts, LENGTH(fonts)))
     die("no fonts could be loaded.");
-  lrpad = drw->fonts->h;
+  lrpad = dwm_drw->fonts->h;
 
 #ifdef __OpenBSD__
   if (pledge("stdio rpath", NULL) == -1)

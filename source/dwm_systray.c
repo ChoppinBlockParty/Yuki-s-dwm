@@ -23,23 +23,24 @@
 #define VERSION_MINOR 0
 #define XEMBED_EMBEDDED_VERSION (VERSION_MAJOR << 16) | VERSION_MINOR
 
+static int _systray_init = 0;
 static Window _systray_window;
-dwm_window_t* _systray_icons;
+static dwm_client_t* _systray_icons;
 
 #define _NET_SYSTEM_TRAY_ORIENTATION_HORZ 0
 static unsigned long systrayorientation = _NET_SYSTEM_TRAY_ORIENTATION_HORZ;
 
-dwm_window_t* dwm_find_systray_icon_window(Window w) {
+dwm_client_t* dwm_find_systray_icon_window(Window w) {
   if (!DWM_HAS_SYSTRAY || !w)
     return NULL;
-  dwm_window_t* i = _systray_icons;
+  dwm_client_t* i = _systray_icons;
   for (; i && i->win != w; i = i->next)
     ;
   return i;
 }
 
-dwm_screen_t* dwm_find_systray_screen(dwm_screen_t* m) {
-  dwm_screen_t* t;
+dwm_monitor_t* dwm_find_systray_screen(dwm_monitor_t* m) {
+  dwm_monitor_t* t;
   int i, n;
   if (!DWM_SYSTRAY_PINNING) {
     if (!m)
@@ -57,7 +58,7 @@ dwm_screen_t* dwm_find_systray_screen(dwm_screen_t* m) {
 
 unsigned int dwm_calculate_systray_width() {
   unsigned int w = 0;
-  dwm_window_t* i;
+  dwm_client_t* i;
   if (DWM_HAS_SYSTRAY)
     for (i = _systray_icons; i; w += i->w + DWM_SYSTRAY_SPACING, i = i->next)
       ;
@@ -68,7 +69,10 @@ void dwm_create_systray() {
   if (!DWM_HAS_SYSTRAY)
     return;
 
-  dwm_screen_t* m = dwm_find_systray_screen(NULL);
+  if (_systray_init)
+    return;
+
+  dwm_monitor_t* m = dwm_find_systray_screen(NULL);
   XSetWindowAttributes wa;
 
   _systray_window
@@ -109,6 +113,7 @@ void dwm_create_systray() {
                      0,
                      0);
     XSync(dwm_x_display, False);
+    _systray_init = 1;
   } else {
     fprintf(stderr, "dwm: unable to obtain system tray.\n");
   }
@@ -120,11 +125,13 @@ void dwm_update_systray() {
 
   XSetWindowAttributes wa;
   XWindowChanges wc;
-  dwm_screen_t* m = dwm_find_systray_screen(NULL);
+  dwm_monitor_t* m = dwm_find_systray_screen(NULL);
   unsigned int x = m->mx + m->mw;
   unsigned int w = 0;
 
-  for (dwm_window_t* i = _systray_icons; i; i = i->next) {
+  dwm_create_systray();
+
+  for (dwm_client_t* i = _systray_icons; i; i = i->next) {
     /* make sure the background color stays the same */
     wa.background_pixel = dwm_color_schemes[DwmNormalScheme][DwmBgColor].pixel;
     XChangeWindowAttributes(dwm_x_display, i->win, CWBackPixel, &wa);
@@ -153,8 +160,8 @@ void dwm_update_systray() {
   XMapSubwindows(dwm_x_display, _systray_window);
   /* redraw background */
   XSetForeground(
-    dwm_x_display, drw->gc, dwm_color_schemes[DwmNormalScheme][DwmBgColor].pixel);
-  XFillRectangle(dwm_x_display, _systray_window, drw->gc, 0, 0, w, dwm_bar_height);
+    dwm_x_display, dwm_drw->gc, dwm_color_schemes[DwmNormalScheme][DwmBgColor].pixel);
+  XFillRectangle(dwm_x_display, _systray_window, dwm_drw->gc, 0, 0, w, dwm_bar_height);
   XSync(dwm_x_display, False);
 }
 
@@ -169,7 +176,7 @@ int dwm_is_systray_window(Window win) {
   return DWM_HAS_SYSTRAY && win == _systray_window;
 }
 
-void dwm_raise_systray(dwm_screen_t* m) {
+void dwm_raise_systray(dwm_monitor_t* m) {
   if (DWM_HAS_SYSTRAY)
     return;
   if (m == dwm_find_systray_screen(m))
@@ -190,10 +197,10 @@ void dwm_toggle_systray() {
   XConfigureWindow(dwm_x_display, _systray_window, CWY, &wc);
 }
 
-dwm_window_t* dwm_add_systray_icon(Window win) {
-  dwm_window_t* c = (dwm_window_t*)calloc(1, sizeof(dwm_window_t));
+dwm_client_t* dwm_add_systray_icon(Window win) {
+  dwm_client_t* c = (dwm_client_t*)calloc(1, sizeof(dwm_client_t));
   if (!c)
-    die("fatal: could not malloc() %u bytes\n", sizeof(dwm_window_t));
+    die("fatal: could not malloc() %u bytes\n", sizeof(dwm_client_t));
   c->win = win;
   c->mon = dwm_this_screen;
   c->next = _systray_icons;
@@ -248,7 +255,7 @@ dwm_window_t* dwm_add_systray_icon(Window win) {
   return c;
 }
 
-void dwm_update_systray_icon_geom(dwm_window_t* i, int w, int h) {
+void dwm_update_systray_icon_geom(dwm_client_t* i, int w, int h) {
   if (i) {
     i->h = dwm_bar_height;
     if (w == h)
@@ -269,7 +276,7 @@ void dwm_update_systray_icon_geom(dwm_window_t* i, int w, int h) {
   }
 }
 
-void dwm_update_systray_icon_state(dwm_window_t* i, XPropertyEvent* ev) {
+void dwm_update_systray_icon_state(dwm_client_t* i, XPropertyEvent* ev) {
   Atom atom;
   int code = 0;
 
@@ -299,11 +306,11 @@ void dwm_update_systray_icon_state(dwm_window_t* i, XPropertyEvent* ev) {
                    XEMBED_EMBEDDED_VERSION);
 }
 
-void dwm_remove_systray_icon(dwm_window_t* i) {
+void dwm_remove_systray_icon(dwm_client_t* i) {
   if (!DWM_HAS_SYSTRAY || !i)
     return;
 
-  dwm_window_t** ii;
+  dwm_client_t** ii;
   for (ii = &_systray_icons; *ii && *ii != i; ii = &(*ii)->next)
     ;
   if (ii)
