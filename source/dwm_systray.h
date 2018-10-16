@@ -4,9 +4,9 @@
 
 #include <X11/Xlib.h>
 
-dwm_client_t* dwm_find_systray_icon_window(Window w);
+dwm_client_t* dwm_find_systray_icon_client(Window w);
 
-dwm_monitor_t* dwm_find_systray_screen(dwm_monitor_t* m);
+dwm_monitor_t* dwm_find_systray_monitor(dwm_monitor_t* m);
 
 unsigned int dwm_calculate_systray_width();
 

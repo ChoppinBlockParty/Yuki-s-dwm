@@ -291,7 +291,7 @@ void checkotherwm(void) {
   XSync(dwm_x_display, False);
 }
 
-void cleanup(void) {
+void cleanup() {
   Arg a = {.ui = ~0};
   dwm_layout_t foo = {"", NULL};
   dwm_monitor_t* m;
@@ -478,7 +478,7 @@ void destroynotify(XEvent* e) {
 
   if ((c = wintoclient(ev->window))) {
     unmanage(c, 1);
-  } else if ((c = dwm_find_systray_icon_window(ev->window))) {
+  } else if ((c = dwm_find_systray_icon_client(ev->window))) {
     dwm_remove_systray_icon(c);
     move_resize_bar(dwm_this_screen);
     dwm_update_systray();
@@ -527,17 +527,15 @@ dwm_monitor_t* dirtomon(int dir) {
 }
 
 void drawbar(dwm_monitor_t* m) {
-  int x, w, dwm_x_screen_width = 0;
+  int w;
+  int systray_width = 0;
   int boxs = dwm_drw->fonts->h / 9;
   int boxw = dwm_drw->fonts->h / 6 + 2;
   unsigned int i, occ = 0, urg = 0;
   dwm_client_t* c;
 
-  /* draw status first so it can be overdrawn by tags later */
-  if (m == dwm_this_screen) { /* status is only drawn on selected monitor */
-    if (DWM_HAS_SYSTRAY && m == dwm_find_systray_screen(m)) {
-      dwm_x_screen_width = dwm_calculate_systray_width();
-    }
+  if (m == dwm_find_systray_monitor(m)) {
+    systray_width = dwm_calculate_systray_width();
   }
 
   move_resize_bar(m);
@@ -546,7 +544,7 @@ void drawbar(dwm_monitor_t* m) {
     if (c->isurgent)
       urg |= c->tags;
   }
-  x = 0;
+  int x = 0;
   for (i = 0; i < LENGTH(tags); i++) {
     w = TEXTW(tags[i]);
     dwm_drw_setscheme(
@@ -569,7 +567,7 @@ void drawbar(dwm_monitor_t* m) {
   dwm_drw_setscheme(dwm_drw, dwm_color_schemes[DwmNormalScheme]);
   x = dwm_drw_text(dwm_drw, x, 0, w, dwm_bar_height, lrpad / 2, m->ltsymbol, 0);
 
-  if ((w = m->ww - dwm_x_screen_width - x) > dwm_bar_height) {
+  if ((w = m->ww - systray_width - x) > dwm_bar_height) {
     if (m->sel) {
       dwm_drw_setscheme(
         dwm_drw,
@@ -975,7 +973,7 @@ void maprequest(XEvent* e) {
   XMapRequestEvent* ev = &e->xmaprequest;
 
   dwm_client_t* i;
-  if ((i = dwm_find_systray_icon_window(ev->window))) {
+  if ((i = dwm_find_systray_icon_client(ev->window))) {
     dwm_send_systray_icon_window_active(i->win);
     move_resize_bar(dwm_this_screen);
     dwm_update_systray();
@@ -1101,7 +1099,7 @@ void propertynotify(XEvent* e) {
   Window trans;
   XPropertyEvent* ev = &e->xproperty;
 
-  if ((c = dwm_find_systray_icon_window(ev->window))) {
+  if ((c = dwm_find_systray_icon_client(ev->window))) {
     if (ev->atom == XA_WM_NORMAL_HINTS) {
       dwm_update_size_hints(c);
       dwm_update_systray_icon_geom(c, c->w, c->h);
@@ -1160,7 +1158,7 @@ void resizerequest(XEvent* e) {
   XResizeRequestEvent* ev = &e->xresizerequest;
   dwm_client_t* i;
 
-  if ((i = dwm_find_systray_icon_window(ev->window))) {
+  if ((i = dwm_find_systray_icon_client(ev->window))) {
     dwm_update_systray_icon_geom(i, ev->width, ev->height);
     move_resize_bar(dwm_this_screen);
     dwm_update_systray();
@@ -1169,7 +1167,7 @@ void resizerequest(XEvent* e) {
 
 void move_resize_bar(dwm_monitor_t* m) {
   unsigned int w = m->ww;
-  if (DWM_HAS_SYSTRAY && m == dwm_find_systray_screen(m))
+  if (m == dwm_find_systray_monitor(m))
     w -= dwm_calculate_systray_width();
   XMoveResizeWindow(dwm_x_display, m->barwin, m->wx, m->by, w, dwm_bar_height);
 }
@@ -1693,7 +1691,8 @@ void unmanage(dwm_client_t* c, int destroyed) {
   detachstack(c);
   if (!destroyed) {
     wc.border_width = c->oldbw;
-    XGrabServer(dwm_x_display); /* avoid race conditions */
+    // avoid race conditions
+    XGrabServer(dwm_x_display);
     XSetErrorHandler(xerrordummy);
     XConfigureWindow(dwm_x_display, c->win, CWBorderWidth, &wc); /* restore border */
     XUngrabButton(dwm_x_display, AnyButton, AnyModifier, c->win);
@@ -1717,7 +1716,7 @@ void unmapnotify(XEvent* e) {
       dwm_set_x_window_state(c, WithdrawnState);
     else
       unmanage(c, 0);
-  } else if ((c = dwm_find_systray_icon_window(ev->window))) {
+  } else if ((c = dwm_find_systray_icon_client(ev->window))) {
     dwm_remove_systray_icon(c);
     move_resize_bar(dwm_this_screen);
     dwm_update_systray();
@@ -1734,7 +1733,7 @@ void updatebars(void) {
     if (m->barwin)
       continue;
     unsigned int w = m->ww;
-    if (DWM_HAS_SYSTRAY && m == dwm_find_systray_screen(m))
+    if (m == dwm_find_systray_monitor(m))
       w -= dwm_calculate_systray_width();
     m->barwin = XCreateWindow(dwm_x_display,
                               dwm_x_window,

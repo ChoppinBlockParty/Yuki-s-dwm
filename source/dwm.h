@@ -55,7 +55,7 @@ static void attach(dwm_client_t* c);
 static void attachstack(dwm_client_t* c);
 static void buttonpress(XEvent* e);
 static void checkotherwm(void);
-static void cleanup(void);
+static void cleanup();
 static void cleanupmon(dwm_monitor_t* mon);
 static void clientmessage(XEvent* e);
 static void configure(dwm_client_t* c);
