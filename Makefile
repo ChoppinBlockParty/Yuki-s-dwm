@@ -32,7 +32,7 @@ CC = clang-7
 SRC = source/drw.c source/util.c
 OBJ = ${SRC:.c=.o}
 
-DWM_SRC = source/dwm_global.c source/dwm_systray.c
+DWM_SRC = source/dwm_core.c source/dwm_global.c source/dwm_systray.c
 DWM_OBJ = ${DWM_SRC:.c=.o}
 
 all: options dwm dmenu stest

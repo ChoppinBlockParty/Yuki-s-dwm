@@ -48,13 +48,7 @@ typedef struct {
   int monitor;
 } Rule;
 
-typedef struct {
-  Window win;
-  dwm_window_t* icons;
-} Systray;
-
 static void applyrules(dwm_window_t* c);
-static int applysizehints(dwm_window_t* c, int* x, int* y, int* w, int* h, int interact);
 static void arrange(dwm_screen_t* m);
 static void arrangemon(dwm_screen_t* m);
 static void attach(dwm_window_t* c);
@@ -107,10 +101,7 @@ static void resizemouse(const Arg* arg);
 static void restack(dwm_screen_t* m);
 static void run(void);
 static void scan(void);
-static int
-sendevent(Window w, Atom proto, int mask, long d0, long d1, long d2, long d3, long d4);
 static void sendmon(dwm_window_t* c, dwm_screen_t* m);
-static void setclientstate(dwm_window_t* c, long state);
 static void setfocus(dwm_window_t* c);
 static void setfullscreen(dwm_window_t* c, int fullscreen);
 static void setlayout(const Arg* arg);
@@ -135,7 +126,6 @@ static void updatebars(void);
 static void updateclientlist(void);
 static int updategeom(void);
 static void updatenumlockmask(void);
-static void updatesizehints(dwm_window_t* c);
 static void updatetitle(dwm_window_t* c);
 static void updatewindowtype(dwm_window_t* c);
 static void updatewmhints(dwm_window_t* c);
@@ -148,10 +138,3 @@ static int xerrorstart(Display* dwm_x_display, XErrorEvent* ee);
 static void zoom(const Arg* arg);
 static void movestack(const Arg* arg);
 static void togglescratch(const Arg* arg);
-static unsigned int getsystraywidth();
-static dwm_screen_t* systraytomon(dwm_screen_t* m);
-static void updatesystrayicongeom(dwm_window_t* i, int w, int h);
-static void updatesystrayiconstate(dwm_window_t* i, XPropertyEvent* ev);
-static void updatesystray(void);
-static dwm_window_t* wintosystrayicon(Window w);
-static void removesystrayicon(dwm_window_t* i);

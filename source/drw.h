@@ -13,7 +13,7 @@ typedef struct Fnt {
   struct Fnt* next;
 } Fnt;
 
-typedef struct {
+typedef struct dwm_drw_s {
   unsigned int w, h;
   Display* dpy;
   int screen;
@@ -25,9 +25,9 @@ typedef struct {
 } Drw;
 
 /* Drawable abstraction */
-Drw* drw_create(Display* dpy, int screen, Window win, unsigned int w, unsigned int h);
+void dwm_init_drw(Drw* drw, Display* dpy, int screen, Window root, unsigned int w, unsigned int h);
+void dwm_release_drw(Drw* drw);
 void drw_resize(Drw* drw, unsigned int w, unsigned int h);
-void drw_free(Drw* drw);
 
 /* Fnt abstraction */
 Fnt* drw_fontset_create(Drw* drw, const char* fonts[], size_t fontcount);

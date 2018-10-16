@@ -2,19 +2,13 @@
 
 #include <stddef.h>
 
-#include "source/core.h"
+#include "source/dwm.h"
 
 /* appearance */
 static const unsigned int borderpx = 1; /* border pixel of windows */
 static const unsigned int snap = 32; /* snap pixel */
 static const int showbar = 1; /* 0 means no bar */
 static const int topbar = 1; /* 0 means bottom bar */
-static const unsigned int systraypinning
-  = 0; /* 0: sloppy systray follows selected monitor, >0: pin systray to monitor X */
-static const unsigned int systrayspacing = 2; /* systray spacing */
-static const int systraypinningfailfirst
-  = 1; /* 1: if pinning fails, display systray on the first monitor, 0: display systray on the last monitor*/
-static const int showsystray = 1; /* 0 means no systray */
 static const char* fonts[] = {"monospace:size=10"};
 static const char dmenufont[] = "monospace:size=10";
 static const char col_gray1[] = "#222222";
@@ -46,7 +40,6 @@ static const Rule rules[] = {
 /* layout(s) */
 static const float mfact = 0.55; /* factor of master area size [0.05..0.95] */
 static const int nmaster = 1; /* number of clients in master area */
-static const int resizehints = 1; /* 1 means respect size hints in tiled resizals */
 
 // clang-format off
 static const dwm_layout_t layouts[] = {

@@ -40,8 +40,9 @@
 #endif /* XINERAMA */
 #include <X11/Xft/Xft.h>
 
-#include "core.h"
 #include "drw.h"
+#include "dwm.h"
+#include "dwm_core.h"
 #include "dwm_enum.h"
 #include "dwm_global.h"
 #include "dwm_systray.h"
@@ -56,61 +57,42 @@
   (MAX(0, MIN((x) + (w), (m)->wx + (m)->ww) - MAX((x), (m)->wx))                         \
    * MAX(0, MIN((y) + (h), (m)->wy + (m)->wh) - MAX((y), (m)->wy)))
 #define ISVISIBLE(C) ((C->tags & C->mon->tagset[C->mon->seltags]))
-#define LENGTH(X) (sizeof X / sizeof X[0])
 #define MOUSEMASK (BUTTONMASK | PointerMotionMask)
-#define WIDTH(X) ((X)->w + 2 * (X)->bw)
-#define HEIGHT(X) ((X)->h + 2 * (X)->bw)
 #define TAGMASK ((1 << LENGTH(tags)) - 1)
 #define TEXTW(X) (drw_fontset_getwidth(drw, (X)) + lrpad)
 
 #define SYSTEM_TRAY_REQUEST_DOCK 0
 
-/* XEMBED messages */
-#define XEMBED_EMBEDDED_NOTIFY 0
-#define XEMBED_WINDOW_ACTIVATE 1
-#define XEMBED_FOCUS_IN 4
-#define XEMBED_MODALITY_ON 10
-
-#define XEMBED_MAPPED (1 << 0)
-#define XEMBED_WINDOW_ACTIVATE 1
-#define XEMBED_WINDOW_DEACTIVATE 2
-
-#define VERSION_MAJOR 0
-#define VERSION_MINOR 0
-#define XEMBED_EMBEDDED_VERSION (VERSION_MAJOR << 16) | VERSION_MINOR
-
 /* variables */
 static const char broken[] = "broken";
 static char stext[256];
-static int screen;
-static int sw, sh; /* X display screen geometry width, height */
 static int blw = 0; /* bar geometry */
 static int lrpad; /* sum of left and right padding for text */
 static int (*xerrorxlib)(Display*, XErrorEvent*);
 static unsigned int numlockmask = 0;
-static Systray* systray = NULL;
-static void (*handler[LASTEvent])(XEvent*) = {[ButtonPress] = buttonpress,
-                                              [ClientMessage] = clientmessage,
-                                              [ConfigureRequest] = configurerequest,
-                                              [ConfigureNotify] = configurenotify,
-                                              [DestroyNotify] = destroynotify,
-                                              [EnterNotify] = enternotify,
-                                              [Expose] = expose,
-                                              [FocusIn] = focusin,
-                                              [KeyPress] = keypress,
-                                              [MappingNotify] = mappingnotify,
-                                              [MapRequest] = maprequest,
-                                              [MotionNotify] = motionnotify,
-                                              [PropertyNotify] = propertynotify,
-                                              [ResizeRequest] = resizerequest,
-                                              [UnmapNotify] = unmapnotify};
+static void (*drw_x_event_handlers[LASTEvent])(XEvent*)
+  = {[ButtonPress] = buttonpress,
+     [ClientMessage] = clientmessage,
+     [ConfigureRequest] = configurerequest,
+     [ConfigureNotify] = configurenotify,
+     [DestroyNotify] = destroynotify,
+     [EnterNotify] = enternotify,
+     [Expose] = expose,
+     [FocusIn] = focusin,
+     [KeyPress] = keypress,
+     [MappingNotify] = mappingnotify,
+     [MapRequest] = maprequest,
+     [MotionNotify] = motionnotify,
+     [PropertyNotify] = propertynotify,
+     [ResizeRequest] = resizerequest,
+     [UnmapNotify] = unmapnotify};
 static int running = 1;
 static Cur* cursor[CurLast];
-static Drw* drw;
 static Window wmcheckwin;
 
 /* configuration, allows nested code to access above variables */
 #include "../config.h"
+#include "../def_config.h"
 
 static unsigned int scratchtag = 1 << LENGTH(tags);
 
@@ -193,9 +175,6 @@ unsigned long get_pid(Window target_window) {
   if (!prop || length != 8)
     return 0;
   unsigned long pid = *(unsigned long*)prop;
-  /* char str[1024]; */
-  /* sprintf(str, "OMFFFFFFFFFG         %lu ", pid); */
-  /* dwm_log(str); */
   return pid;
 }
 
@@ -230,70 +209,6 @@ void applyrules(dwm_window_t* c) {
   if (ch.res_name)
     XFree(ch.res_name);
   c->tags = c->tags & TAGMASK ? c->tags & TAGMASK : c->mon->tagset[c->mon->seltags];
-}
-
-int applysizehints(dwm_window_t* c, int* x, int* y, int* w, int* h, int interact) {
-  int baseismin;
-  dwm_screen_t* m = c->mon;
-
-  /* set minimum possible */
-  *w = MAX(1, *w);
-  *h = MAX(1, *h);
-  if (interact) {
-    if (*x > sw)
-      *x = sw - WIDTH(c);
-    if (*y > sh)
-      *y = sh - HEIGHT(c);
-    if (*x + *w + 2 * c->bw < 0)
-      *x = 0;
-    if (*y + *h + 2 * c->bw < 0)
-      *y = 0;
-  } else {
-    if (*x >= m->wx + m->ww)
-      *x = m->wx + m->ww - WIDTH(c);
-    if (*y >= m->wy + m->wh)
-      *y = m->wy + m->wh - HEIGHT(c);
-    if (*x + *w + 2 * c->bw <= m->wx)
-      *x = m->wx;
-    if (*y + *h + 2 * c->bw <= m->wy)
-      *y = m->wy;
-  }
-  if (*h < dwm_bar_height)
-    *h = dwm_bar_height;
-  if (*w < dwm_bar_height)
-    *w = dwm_bar_height;
-  if (resizehints || c->isfloating || !c->mon->lt[c->mon->sellt]->arrange) {
-    /* see last two sentences in ICCCM 4.1.2.3 */
-    baseismin = c->basew == c->minw && c->baseh == c->minh;
-    if (!baseismin) { /* temporarily remove base dimensions */
-      *w -= c->basew;
-      *h -= c->baseh;
-    }
-    /* adjust for aspect limits */
-    if (c->mina > 0 && c->maxa > 0) {
-      if (c->maxa < (float)*w / *h)
-        *w = *h * c->maxa + 0.5;
-      else if (c->mina < (float)*h / *w)
-        *h = *w * c->mina + 0.5;
-    }
-    if (baseismin) { /* increment calculation requires this */
-      *w -= c->basew;
-      *h -= c->baseh;
-    }
-    /* adjust for increment value */
-    if (c->incw)
-      *w -= *w % c->incw;
-    if (c->inch)
-      *h -= *h % c->inch;
-    /* restore base dimensions */
-    *w = MAX(*w + c->basew, c->minw);
-    *h = MAX(*h + c->baseh, c->minh);
-    if (c->maxw)
-      *w = MIN(*w, c->maxw);
-    if (c->maxh)
-      *h = MIN(*h, c->maxh);
-  }
-  return *x != c->x || *y != c->y || *w != c->w || *h != c->h;
 }
 
 void arrange(dwm_screen_t* m) {
@@ -391,17 +306,13 @@ void cleanup(void) {
   while (dwm_screens)
     cleanupmon(dwm_screens);
 
-  if (showsystray) {
-    XUnmapWindow(dwm_x_display, systray->win);
-    XDestroyWindow(dwm_x_display, systray->win);
-    free(systray);
-  }
+  dwm_release_systray();
   for (i = 0; i < CurLast; i++)
     drw_cur_free(drw, cursor[i]);
   for (i = 0; i < LENGTH(colors); i++)
     free(dwm_color_schemes[i]);
   XDestroyWindow(dwm_x_display, wmcheckwin);
-  drw_free(drw);
+  dwm_release_drw(drw);
   XSync(dwm_x_display, False);
   XSetInputFocus(dwm_x_display, PointerRoot, RevertToPointerRoot, CurrentTime);
   XDeleteProperty(dwm_x_display, dwm_x_window, dwm_x_net_atoms[NetActiveWindow]);
@@ -424,79 +335,19 @@ void cleanupmon(dwm_screen_t* mon) {
 
 void clientmessage(XEvent* e) {
   XClientMessageEvent* cme = &e->xclient;
-  dwm_window_t* c = wintoclient(cme->window);
 
-  if (showsystray && cme->window == systray->win
+  if (dwm_is_systray_window(cme->window)
       && cme->message_type == dwm_x_net_atoms[NetSystemTrayOP]) {
-    /* add systray icons */
     if (cme->data.l[1] == SYSTEM_TRAY_REQUEST_DOCK) {
-      if (!(c = (dwm_window_t*)calloc(1, sizeof(dwm_window_t))))
-        die("fatal: could not malloc() %u bytes\n", sizeof(dwm_window_t));
-      c->win = cme->data.l[2];
-      c->mon = dwm_this_screen;
-      c->next = systray->icons;
-      systray->icons = c;
-      XWindowAttributes wa;
-      XGetWindowAttributes(dwm_x_display, c->win, &wa);
-      c->x = c->oldx = c->y = c->oldy = 0;
-      c->w = c->oldw = wa.width;
-      c->h = c->oldh = wa.height;
-      c->oldbw = wa.border_width;
-      c->bw = 0;
-      c->isfloating = True;
-      /* reuse tags field as mapped status */
-      c->tags = 1;
-      updatesizehints(c);
-      updatesystrayicongeom(c, wa.width, wa.height);
-      XAddToSaveSet(dwm_x_display, c->win);
-      XSelectInput(dwm_x_display,
-                   c->win,
-                   StructureNotifyMask | PropertyChangeMask | ResizeRedirectMask);
-      XReparentWindow(dwm_x_display, c->win, systray->win, 0, 0);
-      /* use parents background color */
-      XSetWindowAttributes swa;
-      swa.background_pixel = dwm_color_schemes[DwmNormalScheme][DwmBgColor].pixel;
-      XChangeWindowAttributes(dwm_x_display, c->win, CWBackPixel, &swa);
-      sendevent(c->win,
-                dwm_x_net_atoms[Xembed],
-                StructureNotifyMask,
-                CurrentTime,
-                XEMBED_EMBEDDED_NOTIFY,
-                0,
-                systray->win,
-                XEMBED_EMBEDDED_VERSION);
-      /* FIXME not sure if I have to send these events, too */
-      sendevent(c->win,
-                dwm_x_net_atoms[Xembed],
-                StructureNotifyMask,
-                CurrentTime,
-                XEMBED_FOCUS_IN,
-                0,
-                systray->win,
-                XEMBED_EMBEDDED_VERSION);
-      sendevent(c->win,
-                dwm_x_net_atoms[Xembed],
-                StructureNotifyMask,
-                CurrentTime,
-                XEMBED_WINDOW_ACTIVATE,
-                0,
-                systray->win,
-                XEMBED_EMBEDDED_VERSION);
-      sendevent(c->win,
-                dwm_x_net_atoms[Xembed],
-                StructureNotifyMask,
-                CurrentTime,
-                XEMBED_MODALITY_ON,
-                0,
-                systray->win,
-                XEMBED_EMBEDDED_VERSION);
-      XSync(dwm_x_display, False);
+      dwm_window_t* c = dwm_add_systray_icon(cme->data.l[2]);
       move_resize_bar(dwm_this_screen);
-      updatesystray();
-      setclientstate(c, NormalState);
+      dwm_update_systray();
+      dwm_set_x_window_state(c, NormalState);
     }
     return;
   }
+
+  dwm_window_t* c = wintoclient(cme->window);
 
   if (!c)
     return;
@@ -538,11 +389,11 @@ void configurenotify(XEvent* e) {
 
   /* TODO: updategeom handling sucks, needs to be simplified */
   if (ev->window == dwm_x_window) {
-    dirty = (sw != ev->width || sh != ev->height);
-    sw = ev->width;
-    sh = ev->height;
+    dirty = (dwm_x_screen_width != ev->width || dwm_x_screen_height != ev->height);
+    dwm_x_screen_width = ev->width;
+    dwm_x_screen_height = ev->height;
     if (updategeom() || dirty) {
-      drw_resize(drw, sw, dwm_bar_height);
+      drw_resize(drw, dwm_x_screen_width, dwm_bar_height);
       updatebars();
       for (m = dwm_screens; m; m = m->next) {
         for (c = m->clients; c; c = c->next)
@@ -627,10 +478,10 @@ void destroynotify(XEvent* e) {
 
   if ((c = wintoclient(ev->window))) {
     unmanage(c, 1);
-  } else if ((c = wintosystrayicon(ev->window))) {
-    removesystrayicon(c);
+  } else if ((c = dwm_find_systray_icon_window(ev->window))) {
+    dwm_remove_systray_icon(c);
     move_resize_bar(dwm_this_screen);
-    updatesystray();
+    dwm_update_systray();
   }
 }
 
@@ -676,7 +527,7 @@ dwm_screen_t* dirtomon(int dir) {
 }
 
 void drawbar(dwm_screen_t* m) {
-  int x, w, sw = 0;
+  int x, w, dwm_x_screen_width = 0;
   int boxs = drw->fonts->h / 9;
   int boxw = drw->fonts->h / 6 + 2;
   unsigned int i, occ = 0, urg = 0;
@@ -684,8 +535,8 @@ void drawbar(dwm_screen_t* m) {
 
   /* draw status first so it can be overdrawn by tags later */
   if (m == dwm_this_screen) { /* status is only drawn on selected monitor */
-    if (showsystray && m == systraytomon(m)) {
-      sw = getsystraywidth();
+    if (DWM_HAS_SYSTRAY && m == dwm_find_systray_screen(m)) {
+      dwm_x_screen_width = dwm_calculate_systray_width();
     }
   }
 
@@ -717,7 +568,7 @@ void drawbar(dwm_screen_t* m) {
   drw_setscheme(drw, dwm_color_schemes[DwmNormalScheme]);
   x = drw_text(drw, x, 0, w, dwm_bar_height, lrpad / 2, m->ltsymbol, 0);
 
-  if ((w = m->ww - sw - x) > dwm_bar_height) {
+  if ((w = m->ww - dwm_x_screen_width - x) > dwm_bar_height) {
     if (m->sel) {
       drw_setscheme(
         drw, dwm_color_schemes[m == dwm_this_screen ? DwmThisScheme : DwmNormalScheme]);
@@ -737,7 +588,7 @@ void drawbars(void) {
 
   for (m = dwm_screens; m; m = m->next)
     drawbar(m);
-  updatesystray();
+  dwm_update_systray();
 }
 
 void enternotify(XEvent* e) {
@@ -765,7 +616,7 @@ void expose(XEvent* e) {
   if (ev->count == 0 && (m = wintomon(ev->window))) {
     drawbar(m);
     if (m == dwm_this_screen)
-      updatesystray();
+      dwm_update_systray();
   }
 }
 
@@ -838,29 +689,6 @@ void focusstack(const Arg* arg) {
     focus(c);
     restack(dwm_this_screen);
   }
-}
-
-Atom getatomprop(dwm_window_t* c, Atom prop) {
-  int di;
-  unsigned long dl;
-  unsigned char* p = NULL;
-  Atom da, atom = None;
-  /* FIXME getatomprop should return the number of items and a pointer to
-	 * the stored data instead of this workaround */
-  Atom req = XA_ATOM;
-  if (prop == dwm_x_atoms[XembedInfo])
-    req = dwm_x_atoms[XembedInfo];
-
-  if (XGetWindowProperty(
-        dwm_x_display, c->win, prop, 0L, sizeof atom, False, req, &da, &di, &dl, &dl, &p)
-        == Success
-      && p) {
-    atom = *(Atom*)p;
-    if (da == dwm_x_atoms[XembedInfo] && dl == 2)
-      atom = ((Atom*)p)[1];
-    XFree(p);
-  }
-  return atom;
 }
 
 int getrootptr(int* x, int* y) {
@@ -1008,14 +836,14 @@ void keypress(XEvent* e) {
 void killclient(const Arg* arg) {
   if (!dwm_this_screen->sel)
     return;
-  if (!sendevent(dwm_this_screen->sel->win,
-                 dwm_x_wm_atoms[WMDelete],
-                 NoEventMask,
-                 dwm_x_wm_atoms[WMDelete],
-                 CurrentTime,
-                 0,
-                 0,
-                 0)) {
+  if (!dwm_send_x_event(dwm_this_screen->sel->win,
+                        dwm_x_wm_atoms[WMDelete],
+                        NoEventMask,
+                        dwm_x_wm_atoms[WMDelete],
+                        CurrentTime,
+                        0,
+                        0,
+                        0)) {
     XGrabServer(dwm_x_display);
     XSetErrorHandler(xerrordummy);
     XSetCloseDownMode(dwm_x_display, DestroyAll);
@@ -1096,7 +924,7 @@ void manage(Window w, XWindowAttributes* wa) {
     dwm_x_display, w, dwm_color_schemes[DwmNormalScheme][DwmBorderColor].pixel);
   configure(c); /* propagates border_width, if size doesn't change */
   updatewindowtype(c);
-  updatesizehints(c);
+  dwm_update_size_hints(c);
   updatewmhints(c);
   XSelectInput(dwm_x_display,
                w,
@@ -1119,11 +947,11 @@ void manage(Window w, XWindowAttributes* wa) {
                   1);
   XMoveResizeWindow(dwm_x_display,
                     c->win,
-                    c->x + 2 * sw,
+                    c->x + 2 * dwm_x_screen_width,
                     c->y,
                     c->w,
                     c->h); /* some windows require this */
-  setclientstate(c, NormalState);
+  dwm_set_x_window_state(c, NormalState);
   if (c->mon == dwm_this_screen)
     unfocus(dwm_this_screen->sel, 0);
   c->mon->sel = c;
@@ -1145,17 +973,10 @@ void maprequest(XEvent* e) {
   XMapRequestEvent* ev = &e->xmaprequest;
 
   dwm_window_t* i;
-  if ((i = wintosystrayicon(ev->window))) {
-    sendevent(i->win,
-              dwm_x_net_atoms[Xembed],
-              StructureNotifyMask,
-              CurrentTime,
-              XEMBED_WINDOW_ACTIVATE,
-              0,
-              systray->win,
-              XEMBED_EMBEDDED_VERSION);
+  if ((i = dwm_find_systray_icon_window(ev->window))) {
+    dwm_send_systray_icon_window_active(i->win);
     move_resize_bar(dwm_this_screen);
-    updatesystray();
+    dwm_update_systray();
   }
 
   if (!XGetWindowAttributes(dwm_x_display, ev->window, &wa))
@@ -1227,7 +1048,7 @@ void movemouse(const Arg* arg) {
     case ConfigureRequest:
     case Expose:
     case MapRequest:
-      handler[ev.type](&ev);
+      drw_x_event_handlers[ev.type](&ev);
       break;
     case MotionNotify:
       if ((ev.xmotion.time - lasttime) <= (1000 / 60))
@@ -1278,14 +1099,14 @@ void propertynotify(XEvent* e) {
   Window trans;
   XPropertyEvent* ev = &e->xproperty;
 
-  if ((c = wintosystrayicon(ev->window))) {
+  if ((c = dwm_find_systray_icon_window(ev->window))) {
     if (ev->atom == XA_WM_NORMAL_HINTS) {
-      updatesizehints(c);
-      updatesystrayicongeom(c, c->w, c->h);
+      dwm_update_size_hints(c);
+      dwm_update_systray_icon_geom(c, c->w, c->h);
     } else
-      updatesystrayiconstate(c, ev);
+      dwm_update_systray_icon_state(c, ev);
     move_resize_bar(dwm_this_screen);
-    updatesystray();
+    dwm_update_systray();
   }
 
   if ((ev->window == dwm_x_window) && (ev->atom == XA_WM_NAME))
@@ -1302,7 +1123,7 @@ void propertynotify(XEvent* e) {
         arrange(c->mon);
       break;
     case XA_WM_NORMAL_HINTS:
-      updatesizehints(c);
+      dwm_update_size_hints(c);
       break;
     case XA_WM_HINTS:
       updatewmhints(c);
@@ -1337,22 +1158,22 @@ void resizerequest(XEvent* e) {
   XResizeRequestEvent* ev = &e->xresizerequest;
   dwm_window_t* i;
 
-  if ((i = wintosystrayicon(ev->window))) {
-    updatesystrayicongeom(i, ev->width, ev->height);
+  if ((i = dwm_find_systray_icon_window(ev->window))) {
+    dwm_update_systray_icon_geom(i, ev->width, ev->height);
     move_resize_bar(dwm_this_screen);
-    updatesystray();
+    dwm_update_systray();
   }
 }
 
 void move_resize_bar(dwm_screen_t* m) {
   unsigned int w = m->ww;
-  if (showsystray && m == systraytomon(m))
-    w -= getsystraywidth();
+  if (DWM_HAS_SYSTRAY && m == dwm_find_systray_screen(m))
+    w -= dwm_calculate_systray_width();
   XMoveResizeWindow(dwm_x_display, m->barwin, m->wx, m->by, w, dwm_bar_height);
 }
 
 void resize(dwm_window_t* c, int x, int y, int w, int h, int interact) {
-  if (applysizehints(c, &x, &y, &w, &h, interact))
+  if (dwm_apply_size_hints(c, &x, &y, &w, &h, interact))
     resizeclient(c, x, y, w, h);
 }
 
@@ -1407,7 +1228,7 @@ void resizemouse(const Arg* arg) {
     case ConfigureRequest:
     case Expose:
     case MapRequest:
-      handler[ev.type](&ev);
+      drw_x_event_handlers[ev.type](&ev);
       break;
     case MotionNotify:
       if ((ev.xmotion.time - lasttime) <= (1000 / 60))
@@ -1470,8 +1291,8 @@ void run(void) {
   /* main event loop */
   XSync(dwm_x_display, False);
   while (running && !XNextEvent(dwm_x_display, &ev))
-    if (handler[ev.type])
-      handler[ev.type](&ev); /* call handler */
+    if (drw_x_event_handlers[ev.type])
+      drw_x_event_handlers[ev.type](&ev); /* call handler */
 }
 
 void scan(void) {
@@ -1513,52 +1334,6 @@ void sendmon(dwm_window_t* c, dwm_screen_t* m) {
   arrange(NULL);
 }
 
-void setclientstate(dwm_window_t* c, long state) {
-  long data[] = {state, None};
-
-  XChangeProperty(dwm_x_display,
-                  c->win,
-                  dwm_x_wm_atoms[WMState],
-                  dwm_x_wm_atoms[WMState],
-                  32,
-                  PropModeReplace,
-                  (unsigned char*)data,
-                  2);
-}
-
-int sendevent(
-  Window w, Atom proto, int mask, long d0, long d1, long d2, long d3, long d4) {
-  int n;
-  Atom *protocols, mt;
-  int exists = 0;
-  XEvent ev;
-
-  if (proto == dwm_x_wm_atoms[WMTakeFocus] || proto == dwm_x_wm_atoms[WMDelete]) {
-    mt = dwm_x_wm_atoms[WMProtocols];
-    if (XGetWMProtocols(dwm_x_display, w, &protocols, &n)) {
-      while (!exists && n--)
-        exists = protocols[n] == proto;
-      XFree(protocols);
-    }
-  } else {
-    exists = True;
-    mt = proto;
-  }
-  if (exists) {
-    ev.type = ClientMessage;
-    ev.xclient.window = w;
-    ev.xclient.message_type = mt;
-    ev.xclient.format = 32;
-    ev.xclient.data.l[0] = d0;
-    ev.xclient.data.l[1] = d1;
-    ev.xclient.data.l[2] = d2;
-    ev.xclient.data.l[3] = d3;
-    ev.xclient.data.l[4] = d4;
-    XSendEvent(dwm_x_display, w, False, mask, &ev);
-  }
-  return exists;
-}
-
 void setfocus(dwm_window_t* c) {
   if (!c->neverfocus) {
     XSetInputFocus(dwm_x_display, c->win, RevertToPointerRoot, CurrentTime);
@@ -1571,14 +1346,14 @@ void setfocus(dwm_window_t* c) {
                     (unsigned char*)&(c->win),
                     1);
   }
-  sendevent(c->win,
-            dwm_x_wm_atoms[WMTakeFocus],
-            NoEventMask,
-            dwm_x_wm_atoms[WMTakeFocus],
-            CurrentTime,
-            0,
-            0,
-            0);
+  dwm_send_x_event(c->win,
+                   dwm_x_wm_atoms[WMTakeFocus],
+                   NoEventMask,
+                   dwm_x_wm_atoms[WMTakeFocus],
+                   CurrentTime,
+                   0,
+                   0,
+                   0);
 }
 
 void setfullscreen(dwm_window_t* c, int fullscreen) {
@@ -1655,11 +1430,16 @@ void setup(void) {
   sigchld(0);
 
   /* init screen */
-  screen = DefaultScreen(dwm_x_display);
-  sw = DisplayWidth(dwm_x_display, screen);
-  sh = DisplayHeight(dwm_x_display, screen);
-  dwm_x_window = RootWindow(dwm_x_display, screen);
-  drw = drw_create(dwm_x_display, screen, dwm_x_window, sw, sh);
+  dwm_x_screen = DefaultScreen(dwm_x_display);
+  dwm_x_screen_width = DisplayWidth(dwm_x_display, dwm_x_screen);
+  dwm_x_screen_height = DisplayHeight(dwm_x_display, dwm_x_screen);
+  dwm_x_window = RootWindow(dwm_x_display, dwm_x_screen);
+  dwm_init_drw(drw,
+               dwm_x_display,
+               dwm_x_screen,
+               dwm_x_window,
+               dwm_x_screen_width,
+               dwm_x_screen_height);
   if (!drw_fontset_create(drw, fonts, LENGTH(fonts)))
     die("no fonts could be loaded.");
   lrpad = drw->fonts->h;
@@ -1703,7 +1483,8 @@ void setup(void) {
   for (i = 0; i < LENGTH(colors); i++)
     dwm_color_schemes[i] = drw_scm_create(drw, colors[i], 3);
   /* init system tray */
-  updatesystray();
+  dwm_create_systray();
+  dwm_update_systray();
   /* init bars */
   updatebars();
   drawbar(dwm_this_screen);
@@ -1845,17 +1626,7 @@ void togglebar(const Arg* arg) {
   dwm_this_screen->showbar = !dwm_this_screen->showbar;
   updatebarpos(dwm_this_screen);
   move_resize_bar(dwm_this_screen);
-  if (showsystray) {
-    XWindowChanges wc;
-    if (!dwm_this_screen->showbar)
-      wc.y = -dwm_bar_height;
-    else if (dwm_this_screen->showbar) {
-      wc.y = 0;
-      if (!dwm_this_screen->topbar)
-        wc.y = dwm_this_screen->mh - dwm_bar_height;
-    }
-    XConfigureWindow(dwm_x_display, systray->win, CWY, &wc);
-  }
+  dwm_toggle_systray();
   arrange(dwm_this_screen);
 }
 
@@ -1924,7 +1695,7 @@ void unmanage(dwm_window_t* c, int destroyed) {
     XSetErrorHandler(xerrordummy);
     XConfigureWindow(dwm_x_display, c->win, CWBorderWidth, &wc); /* restore border */
     XUngrabButton(dwm_x_display, AnyButton, AnyModifier, c->win);
-    setclientstate(c, WithdrawnState);
+    dwm_set_x_window_state(c, WithdrawnState);
     XSync(dwm_x_display, False);
     XSetErrorHandler(xerror);
     XUngrabServer(dwm_x_display);
@@ -1941,13 +1712,13 @@ void unmapnotify(XEvent* e) {
 
   if ((c = wintoclient(ev->window))) {
     if (ev->send_event)
-      setclientstate(c, WithdrawnState);
+      dwm_set_x_window_state(c, WithdrawnState);
     else
       unmanage(c, 0);
-  } else if ((c = wintosystrayicon(ev->window))) {
-    removesystrayicon(c);
+  } else if ((c = dwm_find_systray_icon_window(ev->window))) {
+    dwm_remove_systray_icon(c);
     move_resize_bar(dwm_this_screen);
-    updatesystray();
+    dwm_update_systray();
   }
 }
 
@@ -1961,8 +1732,8 @@ void updatebars(void) {
     if (m->barwin)
       continue;
     unsigned int w = m->ww;
-    if (showsystray && m == systraytomon(m))
-      w -= getsystraywidth();
+    if (DWM_HAS_SYSTRAY && m == dwm_find_systray_screen(m))
+      w -= dwm_calculate_systray_width();
     m->barwin = XCreateWindow(dwm_x_display,
                               dwm_x_window,
                               m->wx,
@@ -1970,14 +1741,13 @@ void updatebars(void) {
                               w,
                               dwm_bar_height,
                               0,
-                              DefaultDepth(dwm_x_display, screen),
+                              DefaultDepth(dwm_x_display, dwm_x_screen),
                               CopyFromParent,
-                              DefaultVisual(dwm_x_display, screen),
+                              DefaultVisual(dwm_x_display, dwm_x_screen),
                               CWOverrideRedirect | CWBackPixmap | CWEventMask,
                               &wa);
     XDefineCursor(dwm_x_display, m->barwin, cursor[CurNormal]->cursor);
-    if (showsystray && m == systraytomon(m))
-      XMapRaised(dwm_x_display, systray->win);
+    dwm_raise_systray(m);
     XMapRaised(dwm_x_display, m->barwin);
     XSetClassHint(dwm_x_display, m->barwin, &ch);
   }
@@ -2075,10 +1845,10 @@ int updategeom(void) {
   { /* default monitor setup */
     if (!dwm_screens)
       dwm_screens = createmon();
-    if (dwm_screens->mw != sw || dwm_screens->mh != sh) {
+    if (dwm_screens->mw != dwm_x_screen_width || dwm_screens->mh != dwm_x_screen_height) {
       dirty = 1;
-      dwm_screens->mw = dwm_screens->ww = sw;
-      dwm_screens->mh = dwm_screens->wh = sh;
+      dwm_screens->mw = dwm_screens->ww = dwm_x_screen_width;
+      dwm_screens->mh = dwm_screens->wh = dwm_x_screen_height;
       updatebarpos(dwm_screens);
     }
   }
@@ -2103,47 +1873,6 @@ void updatenumlockmask(void) {
   XFreeModifiermap(modmap);
 }
 
-void updatesizehints(dwm_window_t* c) {
-  long msize;
-  XSizeHints size;
-
-  if (!XGetWMNormalHints(dwm_x_display, c->win, &size, &msize))
-    /* size is uninitialized, ensure that size.flags aren't used */
-    size.flags = PSize;
-  if (size.flags & PBaseSize) {
-    c->basew = size.base_width;
-    c->baseh = size.base_height;
-  } else if (size.flags & PMinSize) {
-    c->basew = size.min_width;
-    c->baseh = size.min_height;
-  } else
-    c->basew = c->baseh = 0;
-  if (size.flags & PResizeInc) {
-    c->incw = size.width_inc;
-    c->inch = size.height_inc;
-  } else
-    c->incw = c->inch = 0;
-  if (size.flags & PMaxSize) {
-    c->maxw = size.max_width;
-    c->maxh = size.max_height;
-  } else
-    c->maxw = c->maxh = 0;
-  if (size.flags & PMinSize) {
-    c->minw = size.min_width;
-    c->minh = size.min_height;
-  } else if (size.flags & PBaseSize) {
-    c->minw = size.base_width;
-    c->minh = size.base_height;
-  } else
-    c->minw = c->minh = 0;
-  if (size.flags & PAspect) {
-    c->mina = (float)size.min_aspect.y / size.min_aspect.x;
-    c->maxa = (float)size.max_aspect.x / size.max_aspect.y;
-  } else
-    c->maxa = c->mina = 0.0;
-  c->isfixed = (c->maxw && c->maxh && c->maxw == c->minw && c->maxh == c->minh);
-}
-
 void updatetitle(dwm_window_t* c) {
   if (!gettextprop(c->win, dwm_x_net_atoms[NetWMName], c->name, sizeof c->name))
     gettextprop(c->win, XA_WM_NAME, c->name, sizeof c->name);
@@ -2152,8 +1881,8 @@ void updatetitle(dwm_window_t* c) {
 }
 
 void updatewindowtype(dwm_window_t* c) {
-  Atom state = getatomprop(c, dwm_x_net_atoms[NetWMState]);
-  Atom wtype = getatomprop(c, dwm_x_net_atoms[NetWMWindowType]);
+  Atom state = dwm_get_x_atom_property(c, dwm_x_net_atoms[NetWMState]);
+  Atom wtype = dwm_get_x_atom_property(c, dwm_x_net_atoms[NetWMWindowType]);
 
   if (state == dwm_x_net_atoms[NetWMFullscreen])
     setfullscreen(c, 1);
@@ -2373,152 +2102,6 @@ void togglescratch(const Arg* arg) {
       dwm_this_screen->scratchpadpid = pid;
     }
   }
-}
-
-unsigned int getsystraywidth() {
-  unsigned int w = 0;
-  dwm_window_t* i;
-  if (showsystray)
-    for (i = systray->icons; i; w += i->w + systrayspacing, i = i->next)
-      ;
-  return w ? w + systrayspacing : 1;
-}
-
-dwm_screen_t* systraytomon(dwm_screen_t* m) {
-  dwm_screen_t* t;
-  int i, n;
-  if (!systraypinning) {
-    if (!m)
-      return dwm_this_screen;
-    return m == dwm_this_screen ? m : NULL;
-  }
-  for (n = 1, t = dwm_screens; t && t->next; n++, t = t->next)
-    ;
-  for (i = 1, t = dwm_screens; t && t->next && i < systraypinning; i++, t = t->next)
-    ;
-  if (systraypinningfailfirst && n < systraypinning)
-    return dwm_screens;
-  return t;
-}
-
-void updatesystrayicongeom(dwm_window_t* i, int w, int h) {
-  if (i) {
-    i->h = dwm_bar_height;
-    if (w == h)
-      i->w = dwm_bar_height;
-    else if (h == dwm_bar_height)
-      i->w = w;
-    else
-      i->w = (int)((float)dwm_bar_height * ((float)w / (float)h));
-    applysizehints(i, &(i->x), &(i->y), &(i->w), &(i->h), False);
-    /* force icons into the systray dimenons if they don't want to */
-    if (i->h > dwm_bar_height) {
-      if (i->w == i->h)
-        i->w = dwm_bar_height;
-      else
-        i->w = (int)((float)dwm_bar_height * ((float)i->w / (float)i->h));
-      i->h = dwm_bar_height;
-    }
-  }
-}
-
-void updatesystrayiconstate(dwm_window_t* i, XPropertyEvent* ev) {
-  long flags;
-  int code = 0;
-
-  if (!showsystray || !i || ev->atom != dwm_x_atoms[XembedInfo]
-      || !(flags = getatomprop(i, dwm_x_atoms[XembedInfo])))
-    return;
-
-  if (flags & XEMBED_MAPPED && !i->tags) {
-    i->tags = 1;
-    code = XEMBED_WINDOW_ACTIVATE;
-    XMapRaised(dwm_x_display, i->win);
-    setclientstate(i, NormalState);
-  } else if (!(flags & XEMBED_MAPPED) && i->tags) {
-    i->tags = 0;
-    code = XEMBED_WINDOW_DEACTIVATE;
-    XUnmapWindow(dwm_x_display, i->win);
-    setclientstate(i, WithdrawnState);
-  } else
-    return;
-  sendevent(i->win,
-            dwm_x_atoms[Xembed],
-            StructureNotifyMask,
-            CurrentTime,
-            code,
-            0,
-            systray->win,
-            XEMBED_EMBEDDED_VERSION);
-}
-
-void updatesystray(void) {
-  XSetWindowAttributes wa;
-  XWindowChanges wc;
-  dwm_window_t* i;
-  dwm_screen_t* m = systraytomon(NULL);
-  unsigned int x = m->mx + m->mw;
-  unsigned int w = 1;
-
-  if (!showsystray)
-    return;
-
-  dwm_create_systray(x, m->by);
-
-  for (w = 0, i = systray->icons; i; i = i->next) {
-    /* make sure the background color stays the same */
-    wa.background_pixel = dwm_color_schemes[DwmNormalScheme][DwmBgColor].pixel;
-    XChangeWindowAttributes(dwm_x_display, i->win, CWBackPixel, &wa);
-    XMapRaised(dwm_x_display, i->win);
-    w += systrayspacing;
-    i->x = w;
-    XMoveResizeWindow(dwm_x_display, i->win, i->x, 0, i->w, i->h);
-    w += i->w;
-    if (i->mon != m)
-      i->mon = m;
-  }
-  w = w ? w + systrayspacing : 1;
-  x -= w;
-  XMoveResizeWindow(dwm_x_display, systray->win, x, m->by, w, dwm_bar_height);
-  wc.x = x;
-  wc.y = m->by;
-  wc.width = w;
-  wc.height = dwm_bar_height;
-  wc.stack_mode = Above;
-  wc.sibling = m->barwin;
-  XConfigureWindow(dwm_x_display,
-                   systray->win,
-                   CWX | CWY | CWWidth | CWHeight | CWSibling | CWStackMode,
-                   &wc);
-  XMapWindow(dwm_x_display, systray->win);
-  XMapSubwindows(dwm_x_display, systray->win);
-  /* redraw background */
-  XSetForeground(
-    dwm_x_display, drw->gc, dwm_color_schemes[DwmNormalScheme][DwmBgColor].pixel);
-  XFillRectangle(dwm_x_display, systray->win, drw->gc, 0, 0, w, dwm_bar_height);
-  XSync(dwm_x_display, False);
-}
-
-dwm_window_t* wintosystrayicon(Window w) {
-  dwm_window_t* i = NULL;
-
-  if (!showsystray || !w)
-    return i;
-  for (i = systray->icons; i && i->win != w; i = i->next)
-    ;
-  return i;
-}
-
-void removesystrayicon(dwm_window_t* i) {
-  dwm_window_t** ii;
-
-  if (!showsystray || !i)
-    return;
-  for (ii = &systray->icons; *ii && *ii != i; ii = &(*ii)->next)
-    ;
-  if (ii)
-    *ii = i->next;
-  free(i);
 }
 
 int main(int argc, char* argv[]) {

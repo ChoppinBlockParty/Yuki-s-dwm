@@ -51,7 +51,8 @@ static Display* dpy;
 static Window root, parentwin, win;
 static XIC xic;
 
-static Drw* drw;
+static Drw _dmenu_drw;
+static Drw* drw = &_dmenu_drw;
 static XftColor* scheme[SchemeLast];
 
 #include "../dmenu_config.h"
@@ -92,7 +93,7 @@ static void cleanup(void) {
   XUngrabKey(dpy, AnyKey, AnyModifier, root);
   for (i = 0; i < SchemeLast; i++)
     free(scheme[i]);
-  drw_free(drw);
+  dwm_release_drw(drw);
   XSync(dpy, False);
   XCloseDisplay(dpy);
 }
@@ -770,7 +771,7 @@ int main(int argc, char* argv[]) {
     parentwin = root;
   if (!XGetWindowAttributes(dpy, parentwin, &wa))
     die("could not get embedding window attributes: 0x%lx", parentwin);
-  drw = drw_create(dpy, screen, root, wa.width, wa.height);
+  dwm_init_drw(drw, dpy, screen, root, wa.width, wa.height);
   if (!drw_fontset_create(drw, fonts, LENGTH(fonts)))
     die("no fonts could be loaded.");
   lrpad = drw->fonts->h;

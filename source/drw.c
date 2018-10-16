@@ -54,9 +54,7 @@ static size_t utf8decode(const char* c, long* u, size_t clen) {
   return len;
 }
 
-Drw* drw_create(Display* dpy, int screen, Window root, unsigned int w, unsigned int h) {
-  Drw* drw = ecalloc(1, sizeof(Drw));
-
+void dwm_init_drw(Drw* drw, Display* dpy, int screen, Window root, unsigned int w, unsigned int h) {
   drw->dpy = dpy;
   drw->screen = screen;
   drw->root = root;
@@ -65,8 +63,11 @@ Drw* drw_create(Display* dpy, int screen, Window root, unsigned int w, unsigned 
   drw->drawable = XCreatePixmap(dpy, root, w, h, DefaultDepth(dpy, screen));
   drw->gc = XCreateGC(dpy, root, 0, NULL);
   XSetLineAttributes(dpy, drw->gc, 1, LineSolid, CapButt, JoinMiter);
+}
 
-  return drw;
+void dwm_release_drw(Drw* drw) {
+  XFreePixmap(drw->dpy, drw->drawable);
+  XFreeGC(drw->dpy, drw->gc);
 }
 
 void drw_resize(Drw* drw, unsigned int w, unsigned int h) {
@@ -79,12 +80,6 @@ void drw_resize(Drw* drw, unsigned int w, unsigned int h) {
     XFreePixmap(drw->dpy, drw->drawable);
   drw->drawable
     = XCreatePixmap(drw->dpy, drw->root, w, h, DefaultDepth(drw->dpy, drw->screen));
-}
-
-void drw_free(Drw* drw) {
-  XFreePixmap(drw->dpy, drw->drawable);
-  XFreeGC(drw->dpy, drw->gc);
-  free(drw);
 }
 
 /* This function is an implementation detail. Library users should use
