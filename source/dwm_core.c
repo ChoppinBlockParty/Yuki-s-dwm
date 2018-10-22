@@ -1,10 +1,23 @@
 #include "dwm_core.h"
 
 #include "../def_config.h"
-
+#include "drw.h"
 #include "util.h"
 
 #include <X11/Xatom.h>
+
+#include <string.h>
+
+void dwm_updatenum_lock_mask_dwm_updatenum_lock_mask() {
+  dwm_num_lock_mask = 0;
+  XModifierKeymap* modmap = XGetModifierMapping(dwm_x_display);
+  for (unsigned i = 0; i < 8; i++)
+    for (unsigned j = 0; j < modmap->max_keypermod; j++)
+      if (modmap->modifiermap[i * modmap->max_keypermod + j]
+          == XKeysymToKeycode(dwm_x_display, XK_Num_Lock))
+        dwm_num_lock_mask = (1 << i);
+  XFreeModifiermap(modmap);
+}
 
 int dwm_apply_size_hints(dwm_client_t* c, int* x, int* y, int* w, int* h, int interact) {
   int baseismin;

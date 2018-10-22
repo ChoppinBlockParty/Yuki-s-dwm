@@ -47,8 +47,8 @@ dwm_monitor_t* dwm_find_systray_monitor(dwm_monitor_t* m) {
   int i, n;
   if (!DWM_SYSTRAY_PINNING) {
     if (!m)
-      return dwm_this_screen;
-    return m == dwm_this_screen ? m : NULL;
+      return dwm_this_monitor;
+    return m == dwm_this_monitor ? m : NULL;
   }
   for (n = 1, t = dwm_screens; t && t->next; n++, t = t->next)
     ;
@@ -190,10 +190,10 @@ void dwm_toggle_systray() {
   if (!DWM_HAS_SYSTRAY)
     return;
   XWindowChanges wc;
-  if (dwm_this_screen->showbar) {
+  if (dwm_this_monitor->showbar) {
     wc.y = 0;
-    if (!dwm_this_screen->topbar)
-      wc.y = dwm_this_screen->mh - dwm_bar_height;
+    if (!dwm_this_monitor->topbar)
+      wc.y = dwm_this_monitor->mh - dwm_bar_height;
   } else {
     wc.y = -dwm_bar_height;
   }
@@ -205,7 +205,7 @@ dwm_client_t* dwm_add_systray_icon(Window win) {
   if (!c)
     die("fatal: could not malloc() %u bytes\n", sizeof(dwm_client_t));
   c->win = win;
-  c->mon = dwm_this_screen;
+  c->mon = dwm_this_monitor;
   c->next = _systray_icons;
   _systray_icons = c;
   XWindowAttributes wa;

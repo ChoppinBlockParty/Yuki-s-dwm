@@ -87,7 +87,7 @@ static void calcoffsets(void) {
       break;
 }
 
-static void cleanup(void) {
+static void _dwm_clean_up(void) {
   size_t i;
 
   XUngrabKey(dpy, AnyKey, AnyModifier, root);
@@ -371,7 +371,7 @@ static void keypress(XKeyEvent* ev) {
     case XK_KP_Enter:
       break;
     case XK_bracketleft:
-      cleanup();
+      _dwm_clean_up();
       exit(1);
     default:
       return;
@@ -440,7 +440,7 @@ static void keypress(XKeyEvent* ev) {
     sel = matchend;
     break;
   case XK_Escape:
-    cleanup();
+    _dwm_clean_up();
     exit(1);
   case XK_Home:
     if (sel == matches) {
@@ -480,7 +480,7 @@ static void keypress(XKeyEvent* ev) {
   case XK_KP_Enter:
     puts((sel && !(ev->state & ShiftMask)) ? sel->text : text);
     if (!(ev->state & ControlMask)) {
-      cleanup();
+      _dwm_clean_up();
       exit(0);
     }
     if (sel)

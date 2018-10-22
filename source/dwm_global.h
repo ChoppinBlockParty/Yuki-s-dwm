@@ -5,6 +5,8 @@
 
 #define WIDTH(X) ((X)->w + 2 * (X)->bw)
 #define HEIGHT(X) ((X)->h + 2 * (X)->bw)
+#define ISVISIBLE(C) ((C->tags & C->mon->tagset[C->mon->seltags]))
+#define BUTTONMASK (ButtonPressMask | ButtonReleaseMask)
 
 typedef struct dwm_monitor_s dwm_monitor_t;
 
@@ -117,9 +119,11 @@ typedef struct dwm_drw_s dwm_drw_t;
 extern dwm_drw_t* dwm_drw;
 
 extern dwm_monitor_t* dwm_screens;
-extern dwm_monitor_t* dwm_this_screen;
+extern dwm_monitor_t* dwm_this_monitor;
 extern int dwm_bar_height;
 extern XftColor** dwm_color_schemes;
 extern Atom dwm_x_wm_atoms[_WMLast];
 extern Atom dwm_x_net_atoms[_NetLast];
 extern Atom dwm_x_atoms[_XLast];
+
+static unsigned int dwm_num_lock_mask = 0;
