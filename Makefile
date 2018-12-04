@@ -80,8 +80,8 @@ install: all
 	chmod 755 ${PREFIX}/bin/stest
 	mkdir -p ${PREFIX}/share/xsessions
 	cp -f etc/share/xsessions/dwm.desktop ${PREFIX}/share/xsessions
-	mkdir -p /etc/lightdm.conf.d
-	cp -f etc/lightdm.conf.d/50-dwm.conf /etc/lightdm/lightdm.conf.d
+	mkdir -p /etc/lightdm
+	cp -f etc/lightdm.conf /etc/lightdm
 
 uninstall:
 	rm -f ${PREFIX}/bin/dwm
@@ -89,6 +89,6 @@ uninstall:
 	rm -f ${PREFIX}/bin/dmenu_run
 	rm -f ${PREFIX}/bin/stest
 	rm -f ${PREFIX}/share/xsessions/dwm.desktop
-	rm -f /etc/lightdm/lightdm.conf.d/50-dwm.conf
+	rm -f /etc/lightdm/lightdm.conf
 
 .PHONY: all options clean dist install uninstall
