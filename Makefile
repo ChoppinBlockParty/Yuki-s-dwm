@@ -23,11 +23,10 @@ INCS = -I${X11INC} -I${FREETYPEINC}
 LIBS = -L${X11LIB} -lX11 ${XINERAMALIBS} ${FREETYPELIBS}
 
 CPPFLAGS = -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L -D_XOPEN_SOURCE=700 -DVERSION=\"${VERSION}\" ${XINERAMAFLAGS}
-CFLAGS   = -std=c11 -pedantic -Wall -Wno-deprecated-declarations -O3 -flto ${INCS} ${CPPFLAGS}
+CFLAGS   = -std=c11 -pedantic -Wall -Wno-deprecated-declarations -O3 -fomit-frame-pointer -fstrict-aliasing -flto ${INCS} ${CPPFLAGS}
 LDFLAGS  = -flto ${LIBS}
 
 # compiler and linker
-CC = clang-7
 
 SRC = source/drw.c source/util.c
 OBJ = ${SRC:.c=.o}
@@ -61,14 +60,12 @@ stest: source/stest.o
 	${CC} -o $@ $^ ${LDFLAGS}
 
 clean:
-	rm -f dwm source/dwm.o dmenu source/dmenu.o stest source/stest.o ${OBJ} ${DWM_OBJ} dwm-${VERSION}.tar.gz
+	rm -f dwm source/dwm.o dmenu source/dmenu.o stest source/stest.o ${OBJ} ${DWM_OBJ}
 
 dist: clean
 	mkdir -p dwm-${VERSION}
 	cp -R LICENSE Makefile README config.def.h \
 		dwm.1 drw.h util.h ${SRC} dwm.png transient.c dwm-${VERSION}
-	tar -cf dwm-${VERSION}.tar dwm-${VERSION}
-	gzip dwm-${VERSION}.tar
 	rm -rf dwm-${VERSION}
 
 install: all
@@ -81,7 +78,10 @@ install: all
 	chmod 755 ${PREFIX}/bin/dmenu_run
 	cp -f stest ${PREFIX}/bin
 	chmod 755 ${PREFIX}/bin/stest
-	cp -f dwm.desktop ${PREFIX}/share/xsessions
+	mkdir -p ${PREFIX}/share/xsessions
+	cp -f etc/share/xsessions/dwm.desktop ${PREFIX}/share/xsessions
+	mkdir -p /etc/lightdm.conf.d
+	cp -f etc/lightdm.conf.d/50-dwm.conf /etc/lightdm/lightdm.conf.d
 
 uninstall:
 	rm -f ${PREFIX}/bin/dwm
@@ -89,5 +89,6 @@ uninstall:
 	rm -f ${PREFIX}/bin/dmenu_run
 	rm -f ${PREFIX}/bin/stest
 	rm -f ${PREFIX}/share/xsessions/dwm.desktop
+	rm -f /etc/lightdm/lightdm.conf.d/50-dwm.conf
 
 .PHONY: all options clean dist install uninstall
