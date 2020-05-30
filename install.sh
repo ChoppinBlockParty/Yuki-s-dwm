@@ -16,7 +16,3 @@ make
 sudo make install
 mkdir -p ~/.config/dwm
 cp -f etc/startup.sh  ~/.config/dwm
-sudo cp -f etc/startup-service.sh  /etc
-sudo cp -f etc/startup.service /etc/systemd/system
-sudo systemctl enable startup
-sudo systemctl start startup
