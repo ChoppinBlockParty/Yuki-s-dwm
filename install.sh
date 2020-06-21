@@ -2,7 +2,8 @@
 
 set -e
 
-sudo apt-get install -y --no-install-recommends xorg libx11-dev libxft-dev fonts-dejavu fonts-freefont-ttf lightdm slick-greeter network-manager-gnome gnome-keyring parcellite unclutter kbdd xsel libxinerama-dev
+# lightdm slick-greeter
+sudo apt-get install -y --no-install-recommends xorg libx11-dev libxft-dev fonts-dejavu fonts-freefont-ttf network-manager-gnome gnome-keyring parcellite unclutter kbdd xsel libxinerama-dev
 
 make clean || true
 make

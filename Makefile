@@ -80,8 +80,8 @@ install: all
 	chmod 755 ${PREFIX}/bin/stest
 	mkdir -p ${PREFIX}/share/xsessions
 	cp -f etc/share/xsessions/dwm.desktop ${PREFIX}/share/xsessions
-	mkdir -p /etc/lightdm
-	cp -f etc/lightdm.conf /etc/lightdm
+	# mkdir -p /etc/lightdm
+	# cp -f etc/lightdm.conf /etc/lightdm
 
 uninstall:
 	rm -f ${PREFIX}/bin/dwm
