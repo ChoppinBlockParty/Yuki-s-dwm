@@ -39,6 +39,7 @@
 #include <X11/extensions/Xinerama.h>
 #endif /* XINERAMA */
 #include <X11/Xft/Xft.h>
+#include <execinfo.h>
 
 #include "drw.h"
 #include "dwm.h"
@@ -697,7 +698,7 @@ void detach(dwm_client_t* c) {
   }
 }
 
-void drawbar(dwm_monitor_t* m) {
+void drawbar(dwm_monitor_t* monitor) {
   int w;
   int systray_width = 0;
   int boxs = dwm_drw->fonts->h / 9;
@@ -705,12 +706,12 @@ void drawbar(dwm_monitor_t* m) {
   unsigned int i, occ = 0, urg = 0;
   dwm_client_t* c;
 
-  if (m == dwm_find_systray_monitor(m)) {
+  if (monitor == dwm_find_systray_monitor(monitor)) {
     systray_width = dwm_calculate_systray_width();
   }
 
-  move_resize_bar(m);
-  for (c = m->clients; c; c = c->next) {
+  move_resize_bar(monitor);
+  for (c = monitor->clients; c; c = c->next) {
     occ |= c->tags;
     if (c->isurgent)
       urg |= c->tags;
@@ -720,7 +721,7 @@ void drawbar(dwm_monitor_t* m) {
     w = TEXTW(tags[i]);
     dwm_drw_setscheme(
       dwm_drw,
-      dwm_color_schemes[m->tagset[m->seltags] & 1 << i ? DwmThisScheme
+      dwm_color_schemes[monitor->tagset[monitor->seltags] & 1 << i ? DwmThisScheme
                                                        : DwmNormalScheme]);
     dwm_drw_text(dwm_drw, x, 0, w, dwm_bar_height, lrpad / 2, tags[i], urg & 1 << i);
     if (occ & 1 << i)
@@ -729,29 +730,29 @@ void drawbar(dwm_monitor_t* m) {
                    boxs,
                    boxw,
                    boxw,
-                   m == dwm_this_monitor && dwm_this_monitor->sel
+                   monitor == dwm_this_monitor && dwm_this_monitor->sel
                      && dwm_this_monitor->sel->tags & 1 << i,
                    urg & 1 << i);
     x += w;
   }
-  w = blw = TEXTW(m->ltsymbol);
+  w = blw = TEXTW(monitor->ltsymbol);
   dwm_drw_setscheme(dwm_drw, dwm_color_schemes[DwmNormalScheme]);
-  x = dwm_drw_text(dwm_drw, x, 0, w, dwm_bar_height, lrpad / 2, m->ltsymbol, 0);
+  x = dwm_drw_text(dwm_drw, x, 0, w, dwm_bar_height, lrpad / 2, monitor->ltsymbol, 0);
 
-  if ((w = m->ww - systray_width - x) > dwm_bar_height) {
-    if (m->sel) {
+  if ((w = monitor->ww - systray_width - x) > dwm_bar_height) {
+    if (monitor->sel) {
       dwm_drw_setscheme(
         dwm_drw,
-        dwm_color_schemes[m == dwm_this_monitor ? DwmThisScheme : DwmNormalScheme]);
-      dwm_drw_text(dwm_drw, x, 0, w, dwm_bar_height, lrpad / 2, m->sel->name, 0);
-      if (m->sel->isfloating)
-        dwm_drw_rect(dwm_drw, x + boxs, boxs, boxw, boxw, m->sel->isfixed, 0);
+        dwm_color_schemes[monitor == dwm_this_monitor ? DwmThisScheme : DwmNormalScheme]);
+      dwm_drw_text(dwm_drw, x, 0, w, dwm_bar_height, lrpad / 2, monitor->sel->name, 0);
+      if (monitor->sel->isfloating)
+        dwm_drw_rect(dwm_drw, x + boxs, boxs, boxw, boxw, monitor->sel->isfixed, 0);
     } else {
       dwm_drw_setscheme(dwm_drw, dwm_color_schemes[DwmNormalScheme]);
       dwm_drw_rect(dwm_drw, x, 0, w, dwm_bar_height, 1, 1);
     }
   }
-  dwm_drw_map(dwm_drw, m->barwin, 0, 0, m->ww, dwm_bar_height);
+  dwm_drw_map(dwm_drw, monitor->barwin, 0, 0, monitor->ww, dwm_bar_height);
 }
 
 void drawbars(void) {
@@ -1784,6 +1785,28 @@ dwm_monitor_t* wintomon(Window w) {
   return dwm_this_monitor;
 }
 
+/* Obtain a backtrace and print it to stdout. */
+void
+print_trace (void)
+{
+  void *array[10];
+  char **strings;
+  int size, i;
+
+  size = backtrace (array, 10);
+  strings = backtrace_symbols (array, size);
+  if (strings != NULL)
+  {
+
+    fprintf (stderr, "Obtained %d stack frames.\n", size);
+    for (i = 0; i < size; i++)
+        fprintf (stderr, "    %s\n", strings[i]);
+  }
+
+  free (strings);
+}
+
+
 /* There's no way to check accesses to destroyed windows, thus those cases are
  * ignored (especially on UnmapNotify's). Other types of errors call Xlibs
  * default error handler, which may call exit. */
@@ -1798,10 +1821,16 @@ int xerror(Display* dwm_x_display, XErrorEvent* ee) {
       || (ee->request_code == X_GrabKey && ee->error_code == BadAccess)
       || (ee->request_code == X_CopyArea && ee->error_code == BadDrawable))
     return 0;
+  char error_text[256];
+  XGetErrorText(dwm_x_display, ee->error_code, error_text, 256);
+
   fprintf(stderr,
-          "dwm: fatal error: request code=%d, error code=%d\n",
+          "dwm: fatal error: request code=%d, error code=%d; %s\n",
           ee->request_code,
-          ee->error_code);
+          ee->error_code,
+          error_text);
+  print_trace();
+
   return xerrorxlib(dwm_x_display, ee); /* may call exit */
 }
 

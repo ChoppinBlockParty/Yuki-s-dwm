@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 
-# for now disable, have troubles finding why the system startup fails
-exit 0
-
 function run_if_does_not_exist {
   if ! pgrep -f "$1" > /dev/null; then
      eval "nohup $1 2>&1 > /dev/null &"
