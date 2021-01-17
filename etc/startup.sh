@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+feh --bg-scale ./dragon-painting-psyhedelic-trippy-colorful-creature-hyperbeast-wallpaper.jpeg || true
+
 # In case we  are running vmware
 [[ -x /usr/bin/vmware-user ]] && /usr/bin/vmware-user
 
