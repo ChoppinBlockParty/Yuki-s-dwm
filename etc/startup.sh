@@ -17,7 +17,10 @@ if ! pgrep -f "gpaste-daemon" > /dev/null; then
    gpaste-client start
 fi
 
-run_if_does_not_exist "unclutter"
+# Not sure I like this anylonger
+# Gives some problems in VMWare Player
+# run_if_does_not_exist "unclutter"
+
 setxkbmap us,ru
 run_if_does_not_exist "kbdd"
 
