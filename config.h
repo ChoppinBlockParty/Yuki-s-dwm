@@ -32,7 +32,8 @@ static const Rule rules[] = {
 	 *	WM_NAME(STRING) = title
 	 */
 	/* class      instance    title       tags mask     isfloating   monitor */
-	{ "Gimp",     NULL,       NULL,       0,            1,           -1 },
+	{ "Gimp",                 NULL,       NULL,       0,            1,           -1 },
+	{ "telegram-desktop",     NULL,       NULL,       0,            1,           -1 },
 	/* { "Firefox",  NULL,       NULL,       1 << 8,       0,           -1 }, */
 };
 // clang-format on
@@ -84,7 +85,7 @@ static const char* dmenucmd[] = {"dmenu_run",
                                  NULL};
 // Start Emacs from zsh because environment are important for it
 static const char* emacscmd[] = {"/bin/zsh", "-c", "emacs", NULL};
-static const char* firefoxcmd[] = {"firefox", NULL};
+static const char* firefoxcmd[] = {"brave-browser", NULL};
 static const char* termcmd[] = {"urxvt", NULL};
 
 // clang-format off
