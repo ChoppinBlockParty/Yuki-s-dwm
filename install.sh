@@ -23,3 +23,8 @@ make
 sudo make install
 mkdir -p ~/.config/dwm
 cp -f etc/startup.sh  ~/.config/dwm
+
+cp wallpapers/artwork-fantasy-art-digital-art-forest.jpg /home/yuki/.config/dwm/wallpapers
+cp wallpapers/psychedelic-abstract-creature-trippy.jpg /home/yuki/.config/dwm/wallpapers
+cp wallpapers/psychedelic-trippy-colorful-creature.jpg /home/yuki/.config/dwm/wallpapers
+cp wallpapers/tree.jpg /home/yuki/.config/dwm/wallpapers

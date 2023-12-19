@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-feh --bg-scale /home/yuki/.cache/dwm/dragon-painting-psyhedelic-trippy-colorful-creature-hyperbeast-wallpaper.jpeg || true
+SCRIPT_DIR="$(realpath $(dirname $0))"
+feh --no-fehbg -Z --recursive --bg-fill --randomize ${SCRIPT_DIR}/wallpapers/*
 
 # In case we  are running vmware
 [[ -x /usr/bin/vmware-user ]] && /usr/bin/vmware-user
@@ -12,7 +13,7 @@ function run_if_does_not_exist {
 }
 
 run_if_does_not_exist "nm-applet"
-run_if_does_not_exist "xscreensaver -no-splash"
+run_if_does_not_exist "blueman-applet"
 if ! pgrep -f "gpaste-daemon" > /dev/null; then
    gpaste-client start
 fi
@@ -27,6 +28,7 @@ run_if_does_not_exist "kbdd"
 # Wait for the keyboard_hook service that sleeps 3 seconds
 sleep 3
 xset r rate 200 40
+xset dpms 600 1200 1800
 
 # if xrandr | grep --color=never "eDP1 connected 1920x1080+0+0" > /dev/null; then
 #   if xrandr | grep --color=never "DP2 connected 1920x1080+0+0" > /dev/null; then

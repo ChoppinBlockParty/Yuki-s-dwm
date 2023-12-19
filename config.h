@@ -86,7 +86,7 @@ static const char* dmenucmd[] = {"dmenu_run",
 // Start Emacs from zsh because environment are important for it
 static const char* emacscmd[] = {"/bin/zsh", "-c", "emacs", NULL};
 static const char* firefoxcmd[] = {"brave-browser", NULL};
-static const char* termcmd[] = {"urxvt", NULL};
+static const char* termcmd[] = {"alacritty", NULL};
 
 // clang-format off
 static Key keys[] = {
